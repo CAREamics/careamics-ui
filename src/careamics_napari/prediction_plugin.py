@@ -1,5 +1,6 @@
 """CAREamics prediction Qt widget."""
 
+from collections import deque
 from pathlib import Path
 from queue import Queue
 from typing import TYPE_CHECKING, Optional
@@ -218,9 +219,14 @@ class PredictionPlugin(QWidget):
             self.pred_worker.start()
 
         elif state == PredictionState.STOPPED:
-            # self.careamist.stop_prediction()
-            # TODO not existing yet
-            pass
+            # this will cause an exception in careamist.predict
+            # self.careamist.trainer.predict_loop.teardown()
+            # exhaust the data fetcher to stop the prediction
+            deque(self.careamist.trainer.predict_loop._data_fetcher, maxlen=0)
+            self.careamist.trainer.predict_loop.reset()
+            self._prediction_queue.put(
+                PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
+            )
 
     def _update_from_prediction(self, update: PredictionUpdate) -> None:
         """Update the signal from the prediction worker.

@@ -78,7 +78,8 @@ for ax in augmentation:
             n_channels=n_channels,
             patch_size=[8, 8, 8] if "Z" in test_axes else [8, 8],
             batch_size=1,
-            num_epochs=1,  
+            num_epochs=1,
+            masked_pixel_percentage=2,
         )
 
         # instantiate a careamist
