@@ -162,26 +162,8 @@ def _predict(
             batch_size=batch_size,
         )
 
-        update_queue.put(PredictionUpdate(PredictionUpdateType.SAMPLE, result))
-
-        # # TODO can we use this to monkey patch the training process?
-        # import time
-        # update_queue.put(
-        #   PredictionUpdate(PredictionUpdateType.MAX_SAMPLES, 1_000 // 10)
-        # )
-        # for i in range(1_000):
-
-        #     # if stopper.stop:
-        #     #     update_queue.put(Update(UpdateType.STATE, TrainingState.STOPPED))
-        #     #     break
-
-        #     if i % 10 == 0:
-        #         update_queue.put(
-        #              PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, i // 10)
-        #         )
-        #         print(i)
-
-        #     time.sleep(0.2)
+        if result is not None and len(result) > 0:
+            update_queue.put(PredictionUpdate(PredictionUpdateType.SAMPLE, result))
 
     except Exception as e:
         traceback.print_exc()

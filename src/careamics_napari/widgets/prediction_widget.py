@@ -128,8 +128,14 @@ class PredictionWidget(QGroupBox):
         self.predict_button.setMinimumWidth(120)
         self.predict_button.setEnabled(False)
         self.predict_button.setToolTip("Run the trained model on the images")
+        # stop button
+        self.stop_button = QPushButton("Stop", self)
+        self.stop_button.setMinimumWidth(120)
+        self.stop_button.setEnabled(False)
+        self.stop_button.setToolTip("Stop the prediction")
 
         predictions.layout().addWidget(self.predict_button, alignment=Qt.AlignLeft)
+        predictions.layout().addWidget(self.stop_button, alignment=Qt.AlignRight)
 
         # add to the group
         self.layout().addWidget(self.pb_prediction)
@@ -141,6 +147,7 @@ class PredictionWidget(QGroupBox):
         if self.pred_status is not None and self.train_status is not None:
             # what to do when the buttons are clicked
             self.predict_button.clicked.connect(self._predict_button_clicked)
+            self.stop_button.clicked.connect(self._stop_button_clicked)
 
             self.tile_size_xy.valueChanged.connect(self._set_xy_tile_size)
             self.tile_size_z.valueChanged.connect(self._set_z_tile_size)
@@ -257,6 +264,14 @@ class PredictionWidget(QGroupBox):
             ):
                 self.pred_status.state = PredictionState.PREDICTING
                 self.predict_button.setEnabled(False)
+                self.stop_button.setEnabled(True)
+
+    def _stop_button_clicked(self: Self) -> None:
+        """Stop the prediction."""
+        if self.pred_status is not None:
+            if self.pred_status.state == PredictionState.PREDICTING:
+                self.pred_status.state = PredictionState.STOPPED
+                self.stop_button.setEnabled(False)
 
     def _update_button_from_train(self: Self, state: TrainingState) -> None:
         """Update the predict button based on the training state.
@@ -279,7 +294,11 @@ class PredictionWidget(QGroupBox):
         state : PredictionState
             The new state of the prediction plugin.
         """
-        if state == PredictionState.DONE or state == PredictionState.CRASHED:
+        if (
+            state == PredictionState.DONE
+            or state == PredictionState.CRASHED
+            or state == PredictionState.STOPPED
+        ):
             self.predict_button.setEnabled(True)
 
 
