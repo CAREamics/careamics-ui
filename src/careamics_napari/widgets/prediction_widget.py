@@ -256,12 +256,14 @@ class PredictionWidget(QGroupBox):
 
     def _predict_button_clicked(self: Self) -> None:
         """Run the prediction on the images."""
-        if self.pred_status is not None:
+        if self.pred_status is not None and self.pred_signal is not None:
             if (
                 self.pred_status.state == PredictionState.IDLE
                 or self.train_status.state == TrainingState.DONE
                 or self.pred_status.state == PredictionState.CRASHED
             ):
+                # Reset the stop event for new prediction
+                self.pred_signal.stop_event.clear()
                 self.pred_status.state = PredictionState.PREDICTING
                 self.predict_button.setEnabled(False)
                 self.stop_button.setEnabled(True)
@@ -282,12 +284,18 @@ class PredictionWidget(QGroupBox):
             The new state of the training plugin.
         """
         if state == TrainingState.DONE:
-            self.predict_button.setEnabled(True)
+            # Only enable predict button if not currently predicting
+            if self.pred_status.state != PredictionState.PREDICTING:
+                self.predict_button.setEnabled(True)
         else:
             self.predict_button.setEnabled(False)
+        
+        # Stop button should only be enabled during prediction
+        if self.pred_status.state != PredictionState.PREDICTING:
+            self.stop_button.setEnabled(False)
 
     def _update_button_from_pred(self: Self, state: PredictionState) -> None:
-        """Update the predict button based on the prediction state.
+        """Update the predict and stop buttons based on the prediction state.
 
         Parameters
         ----------
@@ -300,6 +308,10 @@ class PredictionWidget(QGroupBox):
             or state == PredictionState.STOPPED
         ):
             self.predict_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
+        elif state == PredictionState.PREDICTING:
+            self.predict_button.setEnabled(False)
+            self.stop_button.setEnabled(True)
 
 
 if __name__ == "__main__":

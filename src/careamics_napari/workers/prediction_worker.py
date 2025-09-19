@@ -15,6 +15,7 @@ from careamics_napari.signals import (
     PredictionUpdate,
     PredictionUpdateType,
 )
+from careamics_napari.utils import StopPredictionCallback, PredictionStoppedException
 
 
 # TODO register CAREamist to continue training and predict
@@ -152,6 +153,10 @@ def _predict(
         tile_overlap = None
         batch_size = 1
 
+    # Add stop callback to the trainer
+    stop_callback = StopPredictionCallback(config_signal.stop_event)
+    careamist.trainer.callbacks.append(stop_callback)
+    
     # Predict with CAREamist
     try:
         result = careamist.predict(  # type: ignore
@@ -165,11 +170,22 @@ def _predict(
         if result is not None and len(result) > 0:
             update_queue.put(PredictionUpdate(PredictionUpdateType.SAMPLE, result))
 
+    except PredictionStoppedException as e:
+        # Handle user-requested stop
+        print(f"Prediction stopped by user: {e}")
+        update_queue.put(PredictionUpdate(PredictionUpdateType.STATE, PredictionState.STOPPED))
+        return
+        
     except Exception as e:
         traceback.print_exc()
 
         update_queue.put(PredictionUpdate(PredictionUpdateType.EXCEPTION, e))
         return
+    
+    finally:
+        # Clean up: remove the stop callback from trainer
+        if stop_callback in careamist.trainer.callbacks:
+            careamist.trainer.callbacks.remove(stop_callback)
 
     # signify end of prediction
     update_queue.put(PredictionUpdate(PredictionUpdateType.STATE, PredictionState.DONE))
