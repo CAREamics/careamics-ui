@@ -1,10 +1,11 @@
 """Custom PyTorch Lightning callbacks for prediction control."""
 
-from threading import Event
 from typing import Any
 
 import pytorch_lightning as pl
 from typing_extensions import Self
+
+from careamics_napari.signals import PredictionState, PredictionStatus
 
 
 class PredictionStoppedException(Exception):
@@ -15,26 +16,26 @@ class PredictionStoppedException(Exception):
 class StopPredictionCallback(pl.Callback):
     """PyTorch Lightning callback to stop prediction when signaled.
     
-    This callback monitors a threading.Event and stops the trainer
-    when the event is set, allowing for graceful interruption of
+    This callback monitors a PredictionStatus object and stops the trainer
+    when the state is set to STOPPED, allowing for graceful interruption of
     prediction processes.
     
     Parameters
     ----------
-    stop_event : threading.Event
-        Event that when set, signals the prediction to stop.
+    pred_status : PredictionStatus
+        Prediction status object that when set to STOPPED, signals the prediction to stop.
     """
     
-    def __init__(self: Self, stop_event: Event) -> None:
+    def __init__(self: Self, pred_status: PredictionStatus) -> None:
         """Initialize the callback.
         
         Parameters
         ----------
-        stop_event : threading.Event
-            Event that when set, signals the prediction to stop.
+        pred_status : PredictionStatus
+            Prediction status object that when set to STOPPED, signals the prediction to stop.
         """
         super().__init__()
-        self.stop_event = stop_event
+        self.pred_status = pred_status
     
     def on_predict_batch_start(
         self: Self, 
@@ -59,7 +60,7 @@ class StopPredictionCallback(pl.Callback):
         dataloader_idx : int, optional
             Index of the current dataloader, by default 0.
         """
-        if self.stop_event.is_set():
+        if self.pred_status.state == PredictionState.STOPPED:
             print("Stop signal received, stopping prediction...")
             trainer.should_stop = True
             # For prediction, we need to raise an exception to actually stop

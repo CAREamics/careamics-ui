@@ -31,6 +31,7 @@ from careamics_napari.widgets import (
 from careamics_napari.careamics_utils import UpdaterCallBack
 from careamics_napari.workers import predict_worker
 from careamics_napari.utils.axes_utils import reshape_prediction
+from careamics_napari.utils.prediction_callback import StopPredictionCallback
 
 import numpy as np
 
@@ -187,7 +188,10 @@ class PredictionPlugin(QWidget):
             # carefully load the model among the mist: careamist!
             careamist = CAREamist(
                 model_path,
-                callbacks=[UpdaterCallBack(self._training_queue, self._prediction_queue)]
+                callbacks=[
+                    UpdaterCallBack(self._training_queue, self._prediction_queue),
+                    StopPredictionCallback(self.pred_status)
+                ]
             )
             # training is already done!
             self.train_status.state = TrainingState.DONE
@@ -219,14 +223,7 @@ class PredictionPlugin(QWidget):
             self.pred_worker.start()
 
         elif state == PredictionState.STOPPED:
-            # this will cause an exception in careamist.predict
-            # self.careamist.trainer.predict_loop.teardown()
-            # exhaust the data fetcher to stop the prediction
-            deque(self.careamist.trainer.predict_loop._data_fetcher, maxlen=0)
-            self.careamist.trainer.predict_loop.reset()
-            self._prediction_queue.put(
-                PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
-            )
+            pass
 
     def _update_from_prediction(self, update: PredictionUpdate) -> None:
         """Update the signal from the prediction worker.

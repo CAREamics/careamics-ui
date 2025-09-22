@@ -1,7 +1,6 @@
 """Prediction parameters set by the user."""
 
-from dataclasses import dataclass, field
-from threading import Event
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from psygnal import evented
@@ -59,6 +58,3 @@ class PredictionSignal:
     
     batch_size: int = 1
     """Batch size."""
-
-    stop_event: Event = field(default_factory=Event)
-    """Threading event to signal when prediction should be stopped."""
