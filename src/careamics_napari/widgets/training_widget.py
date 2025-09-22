@@ -77,14 +77,14 @@ class TrainingWidget(QGroupBox):
             ):
                 self.train_status.state = TrainingState.TRAINING
                 self.reset_model_button.setEnabled(False)
-                self.reset_model_button.setText("")
+                # self.reset_model_button.setText("Reset")
                 self.train_button.setText("Stop")
 
             elif self.train_status.state == TrainingState.TRAINING:
                 self.train_status.state = TrainingState.STOPPED
                 self.train_button.setText("Train")
                 self.reset_model_button.setEnabled(True)
-                self.reset_model_button.setText("Reset")
+                # self.reset_model_button.setText("Reset")
 
             elif self.train_status.state == TrainingState.STOPPED:
                 self.train_status.state = TrainingState.TRAINING

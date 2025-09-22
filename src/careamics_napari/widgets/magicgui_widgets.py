@@ -40,13 +40,14 @@ def layer_choice(annotation: Optional[Any] = Image, **kwargs: Any) -> Widget:
         raise ImportError("napari is not installed.")
 
     widget: Widget = create_widget(annotation=annotation, **kwargs)
-    widget.reset_choices()
+    widget.reset_choices()  # type: ignore
     viewer = current_viewer()
 
     # connect to napari events
-    viewer.layers.events.inserted.connect(widget.reset_choices)
-    viewer.layers.events.removed.connect(widget.reset_choices)
-    viewer.layers.events.changed.connect(widget.reset_choices)
+    if viewer is not None:
+        viewer.layers.events.inserted.connect(widget.reset_choices)  # type: ignore
+        viewer.layers.events.removed.connect(widget.reset_choices)  # type: ignore
+        viewer.layers.events.changed.connect(widget.reset_choices)  # type: ignore
 
     return widget
 

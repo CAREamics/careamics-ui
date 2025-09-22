@@ -1,4 +1,8 @@
-"""Training parameters set by the user."""
+"""
+Training Signal base class.
+
+Includes common parameters that will be updated by the UI.
+"""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,7 +12,6 @@ from careamics.utils import get_careamics_home
 from psygnal import evented
 
 if TYPE_CHECKING:
-    from napari.layers import Image
     from psygnal import SignalGroup, SignalInstance
 
     # Class only declared at time checking in order to allow the autocompletion and
@@ -21,7 +24,7 @@ if TYPE_CHECKING:
         """Algorithm used for training."""
 
         use_channels: SignalInstance
-        """Whether tthe data has channels."""
+        """Whether the data has channels."""
 
         is_3d: SignalInstance
         """Whether the data is 3D."""
@@ -38,7 +41,6 @@ else:
 HOME = get_careamics_home()
 
 
-# TODO make sure defaults are used
 @evented
 @dataclass
 class TrainingSignal:
@@ -71,16 +73,16 @@ class TrainingSignal:
     """Whether to load the images from disk or from the viewer."""
 
     if _has_napari:
-        layer_train: Image = None
+        layer_train: Image | None = None
         """Layer containing the training data."""
 
-        layer_train_target: Image = None
+        layer_train_target: Image | None = None
         """Layer containing the training target data."""
 
-        layer_val: Image = None
+        layer_val: Image | None = None
         """Layer containing the validation data."""
 
-        layer_val_target: Image = None
+        layer_val_target: Image | None = None
         """Layer containing the validation target data."""
 
     path_train: str = ""
@@ -125,17 +127,11 @@ class TrainingSignal:
     independent_channels: bool = True
     """Whether to train the channels independently."""
 
-    n_channels_n2v: int = 1
-    """Number of channels when training Noise2Void."""
+    # n_channels_in_care: int = 1
+    # """Number of input channels when training CARE and Noise2Noise."""
 
-    n_channels_in_care: int = 1
-    """Number of input channels when training CARE and Noise2Noise."""
-
-    n_channels_out_care: int = 1
-    """Number of output channels when training CARE and Noise2Noise."""
-
-    use_n2v2: bool = False
-    """Whether to use N2V2."""
+    # n_channels_out_care: int = 1
+    # """Number of output channels when training CARE and Noise2Noise."""
 
     depth: int = 2
     """Depth of the U-Net."""

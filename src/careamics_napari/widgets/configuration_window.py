@@ -1,7 +1,5 @@
 """A dialog widget allowing modifying advanced settings."""
 
-from typing import Optional
-
 from careamics.config.support import SupportedAlgorithm
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
@@ -28,11 +26,6 @@ except ImportError:
         create_int_spinbox,
     )
 
-# TODO missing:
-# structn2v
-# n2v masking parameters
-
-
 # TODO should it be a singleton to make sure there only a single instance at a time?
 # TODO add checkpointing parameters
 # TODO add minimum percentage and minimum val data
@@ -49,7 +42,7 @@ class AdvancedConfigurationWindow(QDialog):
     """
 
     def __init__(
-        self, parent: QWidget, training_signal: Optional[TrainingSignal] = None
+        self, parent: QWidget, training_signal: TrainingSignal | None = None
     ) -> None:
         """Initialize the widget.
 

@@ -1,22 +1,23 @@
 """Classes used to pass information between threds and UI elements."""
 
 __all__ = [
-    "TrainingSignal",
+    "ExportType",
+    "N2VTrainingSignal",
     "PredictionSignal",
-    "TrainingStatus",
-    "TrainingState",
-    "TrainUpdate",
-    "TrainUpdateType",
-    "PredictionStatus",
     "PredictionState",
+    "PredictionStatus",
     "PredictionUpdate",
     "PredictionUpdateType",
-    "ExportType",
     "SavingSignal",
-    "SavingStatus",
     "SavingState",
+    "SavingStatus",
     "SavingUpdate",
     "SavingUpdateType",
+    "TrainUpdate",
+    "TrainUpdateType",
+    "TrainingSignal",
+    "TrainingState",
+    "TrainingStatus",
 ]
 
 
@@ -30,4 +31,5 @@ from .prediction_status import (
 from .saving_signal import ExportType, SavingSignal
 from .saving_status import SavingState, SavingStatus, SavingUpdate, SavingUpdateType
 from .training_signal import TrainingSignal
+from .n2v_config import N2VTrainingSignal
 from .training_status import TrainingState, TrainingStatus, TrainUpdate, TrainUpdateType

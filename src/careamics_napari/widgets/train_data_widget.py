@@ -13,6 +13,9 @@ from typing_extensions import Self
 
 from careamics_napari.signals import TrainingSignal
 from careamics_napari.widgets import FolderWidget, layer_choice
+from careamics_napari.widgets.utils import bind
+from careamics_napari.careamics_utils import BaseConfig
+
 
 if TYPE_CHECKING:
     import napari
@@ -28,41 +31,40 @@ else:
     _has_napari = True
 
 
-# TODO if user don't change the layers then they are None in the signal
 class TrainDataWidget(QTabWidget):
     """A widget offering to select layers from napari or paths from disk.
 
     Parameters
     ----------
-    signal : TrainConfigurationSignal or None, default=None
-        Signal representing the training parameters.
+    careamics_config : Configuration
+            careamics configuration object.
     use_target : bool, default=False
         Whether to target fields.
     """
 
     def __init__(
         self: Self,
-        signal: Optional[TrainingSignal] = None,
+        careamics_config: BaseConfig,
         use_target: bool = False,
     ) -> None:
         """Initialize the widget.
 
         Parameters
         ----------
-        signal : TrainConfigurationSignal or None, default=None
-            Signal representing the training parameters.
+        careamics_config : Configuration
+            careamics configuration object.
         use_target : bool, default=False
             Whether to target fields.
         """
         super().__init__()
-        self.config_signal = signal
+        self.configuration = careamics_config
         self.use_target = use_target
 
         # QTabs
         layer_tab = QWidget()
-        layer_tab.setLayout(QVBoxLayout())
+        # layer_tab.setLayout(QVBoxLayout())
         disk_tab = QWidget()
-        disk_tab.setLayout(QVBoxLayout())
+        # disk_tab.setLayout(QVBoxLayout())
 
         # add tabs
         self.addTab(layer_tab, "From layers")
@@ -74,12 +76,9 @@ class TrainDataWidget(QTabWidget):
         self._set_layer_tab(layer_tab)
         self._set_disk_tab(disk_tab)
 
-        # self.setMaximumHeight(400 if self.use_target else 200)
-
-        # set actions
-        if self.config_signal is not None:
-            self.currentChanged.connect(self._set_data_source)
-            self._set_data_source(self.currentIndex())
+        # set active tab actions
+        # self.currentChanged.connect(self._set_data_source)
+        # self._set_data_source(self.currentIndex())
 
     def _set_layer_tab(
         self: Self,
@@ -94,25 +93,25 @@ class TrainDataWidget(QTabWidget):
         """
         if _has_napari and napari.current_viewer() is not None:
             form = QFormLayout()
-            form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-            form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+            form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+            form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)  # type: ignore
             form.setContentsMargins(12, 12, 0, 0)
 
             self.img_train = layer_choice()
-            self.img_train.native.setToolTip("Select a training layer.")
+            self.img_train.native.setToolTip("Select the training layer.")
 
             self.img_val = layer_choice()
-            self.img_train.native.setToolTip("Select a validation layer.")
+            self.img_train.native.setToolTip("Select the validation layer.")
 
             # connection actions for images
-            self.img_train.changed.connect(self._update_train_layer)
-            self.img_val.changed.connect(self._update_val_layer)
+            # self.img_train.changed.connect(self._update_train_layer)
+            # self.img_val.changed.connect(self._update_val_layer)
 
             # to cover the case when image was loaded before the plugin
-            if self.img_train.value is not None:
-                self._update_train_layer(self.img_train.value)
-            if self.img_val.value is not None:
-                self._update_val_layer(self.img_val.value)
+            # if self.img_train.value is not None:
+            #     self._update_train_layer(self.img_train.value)
+            # if self.img_val.value is not None:
+            #     self._update_val_layer(self.img_val.value)
 
             if self.use_target:
                 # get the target layers
@@ -124,14 +123,14 @@ class TrainDataWidget(QTabWidget):
                 self.target_val.native.setToolTip("Select a validation target layer.")
 
                 # connection actions for targets
-                self.target_train.changed.connect(self._update_train_target_layer)
-                self.target_val.changed.connect(self._update_val_target_layer)
+                # self.target_train.changed.connect(self._update_train_target_layer)
+                # self.target_val.changed.connect(self._update_val_target_layer)
 
                 # to cover the case when image was loaded before the plugin
-                if self.target_train.value is not None:
-                    self._update_train_target_layer(self.target_train.value)
-                if self.target_val.value is not None:
-                    self._update_val_target_layer(self.target_val.value)
+                # if self.target_train.value is not None:
+                #     self._update_train_target_layer(self.target_train.value)
+                # if self.target_val.value is not None:
+                #     self._update_val_target_layer(self.target_val.value)
 
                 form.addRow("Train", self.img_train.native)
                 form.addRow("Val", self.img_val.native)
@@ -142,8 +141,10 @@ class TrainDataWidget(QTabWidget):
                 form.addRow("Train", self.img_train.native)
                 form.addRow("Val", self.img_val.native)
 
-            # layer_tab.layout().addWidget(widget_layers)
-            layer_tab.layout().addLayout(form)
+            # layer_tab.layout().addLayout(form)
+            vbox = QVBoxLayout()
+            vbox.addLayout(form)
+            layer_tab.setLayout(vbox)
 
         else:
             # simply remove the tab
@@ -158,10 +159,10 @@ class TrainDataWidget(QTabWidget):
             Disk tab widget.
         """
         # disk tab
-        buttons = QWidget()
+        # buttons = QWidget()
         form = QFormLayout()
-        form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)  # type: ignore
         # form.setSpacing(0)
 
         self.train_images_folder = FolderWidget("Choose")
@@ -190,12 +191,12 @@ class TrainDataWidget(QTabWidget):
             )
 
             # add actions to target
-            self.train_target_folder.get_text_widget().textChanged.connect(
-                self._update_train_target_folder
-            )
-            self.val_target_folder.get_text_widget().textChanged.connect(
-                self._update_val_target_folder
-            )
+            # self.train_target_folder.get_text_widget().textChanged.connect(
+            #     self._update_train_target_folder
+            # )
+            # self.val_target_folder.get_text_widget().textChanged.connect(
+            #     self._update_val_target_folder
+            # )
 
         else:
             self.train_images_folder.setToolTip(
@@ -209,15 +210,18 @@ class TrainDataWidget(QTabWidget):
             )
 
         # add actions
-        self.train_images_folder.get_text_widget().textChanged.connect(
-            self._update_train_folder
-        )
-        self.val_images_folder.get_text_widget().textChanged.connect(
-            self._update_val_folder
-        )
+        # self.train_images_folder.get_text_widget().textChanged.connect(
+        #     self._update_train_folder
+        # )
+        # self.val_images_folder.get_text_widget().textChanged.connect(
+        #     self._update_val_folder
+        # )
 
-        buttons.setLayout(form)
-        disk_tab.layout().addWidget(buttons)
+        # buttons.setLayout(form)
+        # disk_tab.layout().addWidget(buttons)
+        vbox = QVBoxLayout()
+        vbox.addLayout(form)
+        disk_tab.setLayout(vbox)
 
     def _set_data_source(self: Self, index: int) -> None:
         """Set the signal data source to the selected tab.
@@ -227,8 +231,8 @@ class TrainDataWidget(QTabWidget):
         index : int
             Index of the selected tab.
         """
-        if self.config_signal is not None:
-            self.config_signal.load_from_disk = index == self.count() - 1
+        if self.configuration is not None:
+            self.configuration.load_from_disk = index == self.count() - 1
 
     def _update_train_layer(self: Self, layer: Image) -> None:
         """Update the training layer.
@@ -238,8 +242,8 @@ class TrainDataWidget(QTabWidget):
         layer : Image
             Training layer.
         """
-        if self.config_signal is not None:
-            self.config_signal.layer_train = layer
+        if self.configuration is not None:
+            self.configuration.layer_train = layer
 
     def _update_val_layer(self: Self, layer: Image) -> None:
         """Update the validation layer.
@@ -249,8 +253,8 @@ class TrainDataWidget(QTabWidget):
         layer : Image
             Validation layer.
         """
-        if self.config_signal is not None:
-            self.config_signal.layer_val = layer
+        if self.configuration is not None:
+            self.configuration.layer_val = layer
 
     def _update_train_target_layer(self: Self, layer: Image) -> None:
         """Update the training target layer.
@@ -260,8 +264,8 @@ class TrainDataWidget(QTabWidget):
         layer : Image
             Training target layer.
         """
-        if self.config_signal is not None:
-            self.config_signal.layer_train_target = layer
+        if self.configuration is not None:
+            self.configuration.layer_train_target = layer
 
     def _update_val_target_layer(self: Self, layer: Image) -> None:
         """Update the validation target layer.
@@ -271,8 +275,8 @@ class TrainDataWidget(QTabWidget):
         layer : Image
             Validation target layer.
         """
-        if self.config_signal is not None:
-            self.config_signal.layer_val_target = layer
+        if self.configuration is not None:
+            self.configuration.layer_val_target = layer
 
     def _update_train_folder(self: Self, folder: str) -> None:
         """Update the training folder.
@@ -282,8 +286,8 @@ class TrainDataWidget(QTabWidget):
         folder : str
             Training folder.
         """
-        if self.config_signal is not None:
-            self.config_signal.path_train = folder
+        if self.configuration is not None:
+            self.configuration.path_train = folder
 
     def _update_val_folder(self: Self, folder: str) -> None:
         """Update the validation folder.
@@ -293,8 +297,8 @@ class TrainDataWidget(QTabWidget):
         folder : str
             Validation folder.
         """
-        if self.config_signal is not None:
-            self.config_signal.path_val = folder
+        if self.configuration is not None:
+            self.configuration.path_val = folder
 
     def _update_train_target_folder(self: Self, folder: str) -> None:
         """Update the training target folder.
@@ -304,8 +308,8 @@ class TrainDataWidget(QTabWidget):
         folder : str
             Training target folder.
         """
-        if self.config_signal is not None:
-            self.config_signal.path_train_target = folder
+        if self.configuration is not None:
+            self.configuration.path_train_target = folder
 
     def _update_val_target_folder(self: Self, folder: str) -> None:
         """Update the validation target folder.
@@ -315,8 +319,8 @@ class TrainDataWidget(QTabWidget):
         folder : str
             Validation target folder.
         """
-        if self.config_signal is not None:
-            self.config_signal.path_val_target = folder
+        if self.configuration is not None:
+            self.configuration.path_val_target = folder
 
 
 if __name__ == "__main__":
@@ -338,18 +342,22 @@ if __name__ == "__main__":
     # # Run the application event loop
     # sys.exit(app.exec_())
 
+    import qdarktheme
     import napari
+    from careamics_napari.careamics_utils import get_default_n2v_config
 
+    qdarktheme.enable_hi_dpi()
+
+    config = get_default_n2v_config()
     # create a Viewer
     viewer = napari.Viewer()
-
     # add napari-n2v plugin
     viewer.window.add_dock_widget(
-        TrainDataWidget(TrainingSignal(), True)  # type: ignore
+        TrainDataWidget(config, True)
     )
 
     # add image to napari
     # viewer.add_image(data[0][0], name=data[0][1]['name'])
-
     # start UI
+    qdarktheme.setup_theme("auto")
     napari.run()

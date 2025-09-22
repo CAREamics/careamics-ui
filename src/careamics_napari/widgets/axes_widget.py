@@ -1,14 +1,16 @@
 """Widget for specifying axes order."""
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from qtpy import QtGui
 from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
 from typing_extensions import Self
 
-from careamics_napari.signals import TrainingSignal
+from careamics.config.architectures import UNetModel
+from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.utils import REF_AXES, are_axes_valid
+from careamics_napari.widgets.utils import bind
 
 
 class Highlight(Enum):
@@ -71,11 +73,11 @@ class LettersValidator(QtGui.QValidator):
         """
         if len(value) > 0:
             if value[-1] in self._options:
-                return QtGui.QValidator.Acceptable, value, pos
+                return QtGui.QValidator.Acceptable, value, pos  # type: ignore
         else:
             if value == "":
-                return QtGui.QValidator.Intermediate, value, pos
-        return QtGui.QValidator.Invalid, value, pos
+                return QtGui.QValidator.Intermediate, value, pos  # type: ignore
+        return QtGui.QValidator.Invalid, value, pos  # type: ignore
 
 
 # TODO keep the validation?
@@ -85,55 +87,36 @@ class AxesWidget(QWidget):
 
     Parameters
     ----------
-    n_axes : int, default=3
-        Number of axes.
-    is_3D : bool, default=False
-        Whether the data is 3D.
-    training_signal : TrainingSignal or None, default=None
-        Signal holding all training parameters to be set by the user.
+        careamics_config : Configuration
+            careamics configuration object.
     """
 
-    # TODO unused parameters
     def __init__(
-        self, n_axes=3, is_3D=False, training_signal: Optional[TrainingSignal] = None
+        self,
+        careamics_config: BaseConfig,
     ) -> None:
         """Initialize the widget.
 
         Parameters
         ----------
-        n_axes : int, default=3
-            Number of axes.
-        is_3D : bool, default=False
-            Whether the data is 3D.
-        training_signal : TrainingSignal or None, default=None
-            Signal holding all training parameters to be set by the user.
+            training_signal : BaseConfig
+                A careamics configuration object.
         """
         super().__init__()
-        self.configuration_signal = training_signal
-
-        # # max axes is 6
-        # assert 0 < n_axes <= 6
-
-        # self.n_axes = n_axes
-        # self.is_3D = is_3D
+        self.configuration = careamics_config
         self.is_text_valid = True
 
-        # QtPy
-        self.setLayout(QHBoxLayout())
-        self.layout().setSpacing(0)
-        self.layout().setContentsMargins(0, 0, 0, 0)
-
-        # folder selection button
-        self.label = QLabel("Axes")
-        self.layout().addWidget(self.label)
+        # layout
+        layout = QHBoxLayout()
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         # text field
-        self.text_field = QLineEdit(self.get_default_text())
+        self.label = QLabel("Axes")
+        self.text_field = QLineEdit(careamics_config.data_config.axes)
         self.text_field.setMaxLength(6)
         self.text_field.setValidator(LettersValidator(REF_AXES))
-
-        self.layout().addWidget(self.text_field)
-        self.text_field.textChanged.connect(self._validate_text)
+        self.text_field.textChanged.connect(self._validate_axes)  # type: ignore
         self.text_field.setToolTip(
             "Enter the axes order as they are in your images, e.g. SZYX.\n"
             "Accepted axes are S(ample), T(ime), C(hannel), Z, Y, and X. Red\n"
@@ -141,35 +124,48 @@ class AxesWidget(QWidget):
             "orange means that the axes order is not allowed. YX axes are\n"
             "mandatory."
         )
-
+        # layout
+        layout.addWidget(self.label)
+        layout.addWidget(self.text_field)
+        self.setLayout(layout)
         # validate text
-        self._validate_text()
+        self._validate_axes(self.text_field.text())
 
-        # set up signal handling when axes and 3D change
-        self.text_field.textChanged.connect(self._axes_changed)
+        # create and bind properties to ui
+        type(self).axes = bind(
+            self.text_field,
+            "text",
+            default_value=self.configuration.data_config.axes,
+            validation_fn=self._validate_axes,
+        )
 
-        # if self.configuration_signal is not None:
-        #     self.configuration_signal.events.is_3d.connect(self.update_is_3D)
+    def update_config(self: Self) -> None:
+        """Update the axes in the configuration if it's valid."""
+        if self.is_text_valid:
+            self.configuration.data_config.axes = self.axes
+            if isinstance(self.configuration.algorithm_config.model, UNetModel):
+                self.configuration.algorithm_config.model.independent_channels = (
+                    "C" in self.axes
+                )
+            # print(self.configuration)
 
-    def _axes_changed(self: Self) -> None:
-        """Update the axes in the configuration signal if valid."""
-        if self.configuration_signal is not None and self.is_text_valid:
-            self.configuration_signal.use_channels = "C" in self.get_axes()
-            self.configuration_signal.axes = self.get_axes()
-
-    def _validate_text(self: Self) -> None:
-        """Validate the text in the text field."""
-        axes = self.get_axes()
-
+    def _validate_axes(self: Self, axes: str | None = None) -> bool:
+        """Validate the input text in the text field."""
+        if axes is None:
+            axes = self.text_field.text()
         # change text color according to axes validation
         if are_axes_valid(axes):
             self._set_text_color(Highlight.VALID)
+            self.is_text_valid = True
             # if axes.upper() in filter_dimensions(self.n_axes, self.is_3D):
             #     self._set_text_color(Highlight.VALID)
             # else:
             #     self._set_text_color(Highlight.NOT_ACCEPTED)
         else:
             self._set_text_color(Highlight.UNRECOGNIZED)
+            self.is_text_valid = False
+
+        return self.is_text_valid
 
     def _set_text_color(self: Self, highlight: Highlight) -> None:
         """Set the text color according to the highlight type.
@@ -179,8 +175,6 @@ class AxesWidget(QWidget):
         highlight : Highlight
             Highlight type.
         """
-        self.is_text_valid = highlight == Highlight.VALID
-
         if highlight == Highlight.UNRECOGNIZED:
             self.text_field.setStyleSheet("color: red;")
         elif highlight == Highlight.NOT_ACCEPTED:
@@ -188,81 +182,19 @@ class AxesWidget(QWidget):
         else:  # VALID
             self.text_field.setStyleSheet("color: white;")
 
-    def get_default_text(self: Self) -> str:
-        """Return the default text.
-
-        Returns
-        -------
-        str
-            Default text.
-        """
-        # if self.is_3D:
-        #     defaults = ["YX", "ZYX", "SZYX", "STZYX", "STCZYX"]
-        # else:
-        #     defaults = ["YX", "SYX", "STYX", "STCYX", "STC?YX"]
-
-        # return defaults[self.n_axes - 2]
-        return "YX"
-
-    # def update_axes_number(self, n):
-    #     self.n_axes = n
-    #     self._validate_text()  # force new validation
-
-    # def update_is_3D(self, is_3D):
-    #     self.is_3D = is_3D
-    #     self._validate_text()  # force new validation
-
-    def get_axes(self: Self) -> str:
-        """Return the axes order.
-
-        Returns
-        -------
-        str
-            Axes order.
-        """
-        return self.text_field.text()
-
-    def is_valid(self: Self) -> bool:
-        """Return whether the axes are valid.
-
-        Returns
-        -------
-        bool
-            Whether the axes are valid.
-        """
-        self._validate_text()  # probably unnecessary
-        return self.is_text_valid
-
-    def set_text_field(self: Self, text: str) -> None:
-        """Set the text field.
-
-        Parameters
-        ----------
-        text : str
-            Text to set.
-        """
-        self.text_field.setText(text)
-
 
 if __name__ == "__main__":
     import sys
+    from qtpy.QtWidgets import QApplication, QPushButton
+    from careamics_napari.careamics_utils import get_default_n2v_config
 
-    from qtpy.QtWidgets import QApplication
-
+    config = get_default_n2v_config()
     # Create a QApplication instance
     app = QApplication(sys.argv)
-
-    # Signals
-    myalgo = TrainingSignal()  # type: ignore
-
-    @myalgo.events.use_channels.connect
-    def print_axes():
-        """Print axes."""
-        print(f"Use channels: {myalgo.use_channels}")
-
-    # Instantiate widget
-    widget = AxesWidget(training_signal=myalgo)
-
+    widget = AxesWidget(careamics_config=config)
+    btn = QPushButton("test")
+    btn.clicked.connect(widget.update_config)
+    widget.layout().addWidget(btn)  # type: ignore
     # Show the widget
     widget.show()
 
