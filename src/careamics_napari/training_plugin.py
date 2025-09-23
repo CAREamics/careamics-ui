@@ -247,6 +247,7 @@ class TrainPlugin(QWidget):
                 self._training_queue,
                 self._prediction_queue,
                 self.careamist,
+                self.pred_status,
             )
 
             self.train_worker.yielded.connect(self._update_from_training)
