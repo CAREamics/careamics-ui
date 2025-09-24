@@ -3,7 +3,7 @@
 from collections import deque
 from pathlib import Path
 from queue import Queue
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 from careamics import CAREamist
 from careamics.config.support import SupportedAlgorithm
@@ -46,6 +46,7 @@ from careamics_napari.utils.axes_utils import reshape_prediction
 import numpy as np
 
 if TYPE_CHECKING:
+    import ndv
     import napari
 
 # at run time
@@ -102,7 +103,7 @@ class TrainPlugin(QWidget):
 
     def __init__(
         self: Self,
-        napari_viewer: Optional[napari.Viewer] = None,
+        napari_viewer: Union[napari.Viewer, "ndv.ArrayViewer"] = None,
     ) -> None:
         """Initialize the plugin.
 
@@ -345,21 +346,28 @@ class TrainPlugin(QWidget):
                 )
 
         else:
-            if update.type == PredictionUpdateType.SAMPLE:
+            if update.type == PredictionUpdateType.SAMPLE and self.viewer is not None:
                 # add image to napari
                 # TODO keep scaling?
-                if self.viewer is not None:
-                    # value is eighter a numpy array or a list of numpy arrays with each sample/timepoint as an element
-                    if isinstance(update.value, list):
-                        # combine all samples
-                        samples = np.concatenate(update.value, axis=0)
-                    else:
-                        samples = update.value
-                    
-                    # reshape the prediction to match the input axes
-                    samples = reshape_prediction(samples, self.train_config_signal.axes, self.pred_config_signal.is_3d)
+                # value is eighter a numpy array or a list of numpy arrays with each sample/timepoint as an element
+                if isinstance(update.value, list):
+                    # combine all samples
+                    samples = np.concatenate(update.value, axis=0)
+                else:
+                    samples = update.value
 
+                # reshape the prediction to match the input axes
+                samples = reshape_prediction(samples, self.train_config_signal.axes, self.pred_config_signal.is_3d)
+
+                # if isinstance(self.viewer, napari.Viewer):
+                # elif isinstance(self.viewer, ndv.ArrayViewer):
+                if type(self.viewer).__module__.startswith("napari"):
                     self.viewer.add_image(samples, name="Prediction")
+                elif type(self.viewer).__module__.startswith("ndv"):
+                    # one could also instantiate and show new ndv.ArrayViewer here
+                    self.viewer.data = samples
+                    self.viewer.show()
+
             else:
                 self.pred_status.update(update)
 
