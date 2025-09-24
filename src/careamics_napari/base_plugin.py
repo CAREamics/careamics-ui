@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from careamics import CAREamist
-from careamics.config.support import SupportedAlgorithm
+# from careamics.config.support import SupportedAlgorithm
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QHBoxLayout, QStackedWidget, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from typing_extensions import Self
 
 from careamics_napari.signals import (
@@ -42,8 +42,8 @@ from careamics_napari.workers import predict_worker, save_worker, train_worker
 from careamics_napari.careamics_utils import get_default_n2v_config
 from careamics_napari.utils.axes_utils import reshape_prediction
 
-if TYPE_CHECKING:
-    import napari
+# if TYPE_CHECKING:
+#     import napari
 
 # at run time
 try:
@@ -56,21 +56,21 @@ else:
     _has_napari = True
 
 
-class ScrollPluginWrapper(ScrollWidgetWrapper):
-    """Wrap a plugin widget within a scrolling wrapper."""
+# class ScrollPluginWrapper(ScrollWidgetWrapper):
+#     """Wrap a plugin widget within a scrolling wrapper."""
 
-    def __init__(
-        self: Self,
-        plugin: QWidget,
-    ) -> None:
-        """Initialize the plugin.
+#     def __init__(
+#         self: Self,
+#         plugin: QWidget,
+#     ) -> None:
+#         """Initialize the plugin.
 
-        Parameters
-        ----------
-        plugin : QWidget
-            Plugin widget to wrap.
-        """
-        super().__init__(plugin)
+#         Parameters
+#         ----------
+#         plugin : QWidget
+#             Plugin widget to wrap.
+#         """
+#         super().__init__(plugin)
 
 
 class BasePlugin(QWidget):
@@ -102,7 +102,7 @@ class BasePlugin(QWidget):
         self.pred_status = PredictionStatus()  # type: ignore
         self.save_status = SavingStatus()  # type: ignore
 
-        # create a careamics config (we just use the common params)
+        # create a careamics config (n2v by default)
         self.careamics_config = get_default_n2v_config()
 
         # create signals, used to hold the various parameters modified by the UI
@@ -130,7 +130,8 @@ class BasePlugin(QWidget):
         vbox.addWidget(scroll)
         self.setLayout(vbox)
         self.setMinimumWidth(200)
-        # calling add ui methods will happen in the child classes
+
+        # calling add_*_ui methods will be happened in sub-classes
         # to allow more flexibility while saving some code duplication.
 
     def add_careamics_banner(self, desc: str = "") -> None:
@@ -152,7 +153,7 @@ class BasePlugin(QWidget):
     def add_train_input_ui(self, use_target: bool = False) -> None:
         """Add the train input data selection UI to the plugin."""
         self.input_data_widget = TrainDataWidget(
-            signal=self.careamics_config,
+            careamics_config=self.careamics_config,
             use_target=use_target
         )
         self.base_layout.addWidget(self.input_data_widget)
@@ -166,7 +167,7 @@ class BasePlugin(QWidget):
         """Add the training button UI to the plugin."""
         self.train_widget = TrainingWidget(self.train_status)
         self.progress_widget = TrainProgressWidget(
-            self.train_status, self.careamics_config
+            self.careamics_config, self.train_status
         )
         self.base_layout.addWidget(self.train_widget)
         self.base_layout.addWidget(self.progress_widget)
@@ -190,6 +191,10 @@ class BasePlugin(QWidget):
         )
         self.base_layout.addWidget(self.saving_widget)
 
+    def update_config(self) -> None:
+        """Update the configuration from the UI."""
+        self.config_widget.update_config()
+
     def _set_pred_3d(self, is_3d: bool) -> None:
         """Set the 3D mode flag in the prediction signal.
 
@@ -210,23 +215,26 @@ class BasePlugin(QWidget):
         state : TrainingState
             New state.
         """
-        if (
-            len(self.careamics_config.path_train) == 0
-            and self.careamics_config.layer_train is None
-        ):
-            ntf.show_info("Please set the training data first.")
-            self.train_status.state = TrainingState.STOPPED
-            self.train_widget.train_button.setText("Train")
-            return
-
         if state == TrainingState.TRAINING:
+            # get data sources
+            data_sources = self.input_data_widget.get_data_sources()
+            if data_sources is None:
+                ntf.show_info("Please set the training data first.")
+                self.train_status.state = TrainingState.IDLE
+                self.train_widget.train_button.setText("Train")
+                return
+
+            # update configuration from ui
+            self.update_config()
+
+            # start the training thread
             self.train_worker = train_worker(
                 self.careamics_config,
+                data_sources,
                 self._training_queue,
                 self._prediction_queue,
                 self.careamist,
             )
-
             self.train_worker.yielded.connect(self._update_from_training)
             self.train_worker.start()
 
@@ -389,13 +397,12 @@ if __name__ == "__main__":
     faulthandler.enable(log_file_fd)
     # create a Viewer
     viewer = napari.Viewer()
-    # add napari-n2v plugin
-    # viewer.window.add_dock_widget(
-    #     ScrollPluginWrapper(BasePlugin(viewer))
-    # )
+
     base_plugin = BasePlugin(viewer)
     base_plugin.add_careamics_banner()
+    base_plugin.add_train_input_ui(base_plugin.careamics_config.needs_gt)
     base_plugin.add_config_ui()
+    base_plugin.add_train_button_ui()
     viewer.window.add_dock_widget(base_plugin)
     # add image to napari
     # viewer.add_image(data[0][0], name=data[0][1]['name'])

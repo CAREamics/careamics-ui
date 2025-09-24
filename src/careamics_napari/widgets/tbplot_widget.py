@@ -1,7 +1,8 @@
 """A widget displaying losses and a button to open TensorBoard in the browser."""
 
 import webbrowser
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any
 
 import pyqtgraph as pg
 from magicgui.widgets import Container
@@ -47,11 +48,12 @@ class TBPlotWidget(Container):
 
     def __init__(
         self: Self,
-        min_width: Optional[int] = None,
-        min_height: Optional[int] = None,
-        max_width: Optional[int] = None,
-        max_height: Optional[int] = None,
-        train_signal: Optional[TrainingSignal] = None,
+        min_width: int | None = None,
+        min_height: int | None = None,
+        max_width: int | None = None,
+        max_height: int | None = None,
+        work_dir: Path | None = None,
+        # train_signal: Optional[TrainingSignal] = None,
     ):
         """Initialize the widget.
 
@@ -70,7 +72,8 @@ class TBPlotWidget(Container):
         """
         super().__init__()
 
-        self.train_signal = train_signal
+        # self.train_signal = train_signal
+        self.work_dir = work_dir
 
         if max_width:
             self.native.setMaximumWidth(max_width)
@@ -95,23 +98,24 @@ class TBPlotWidget(Container):
         tb_button = QPushButton("Open in TensorBoard")
         tb_button.setToolTip("Open TensorBoard in your browser")
         tb_button.setIcon(QIcon(QPixmap(ICON_TF)))
-        tb_button.setLayoutDirection(Qt.LeftToRight)
+        tb_button.setLayoutDirection(Qt.LeftToRight)  # type: ignore
         tb_button.setIconSize(QSize(32, 29))
         tb_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         tb_button.clicked.connect(self.open_tb)
 
         # add to layout on the bottom left
+        hbox = QHBoxLayout()
+        hbox.addWidget(tb_button)
+        hbox.addWidget(QLabel(""))
         button_widget = QWidget()
-        button_widget.setLayout(QHBoxLayout())
-        button_widget.layout().addWidget(tb_button)
-        button_widget.layout().addWidget(QLabel(""))
+        button_widget.setLayout(hbox)
         self.native.layout().addWidget(button_widget)
 
         # set empty references
         self.epochs: list[int] = []
         self.train_loss: list[float] = []
         self.val_loss: list[float] = []
-        self.url: Optional[str] = None
+        self.url: str | None = None
         self.tb = None
 
     def stop_tb(self: Self) -> None:
@@ -125,12 +129,12 @@ class TBPlotWidget(Container):
 
     def open_tb(self: Self) -> None:
         """Open TensorBoard in the browser."""
-        if self.tb is None and self.train_signal is not None:
+        if self.tb is None and self.work_dir is not None:
             from tensorboard import program
 
             self.tb = program.TensorBoard()
 
-            path = str(self.train_signal.work_dir / "logs" / "lightning_logs")
+            path = str(self.work_dir / "logs" / "lightning_logs")
             self.tb.configure(argv=[None, "--logdir", path])  # type: ignore
             self.url = self.tb.launch()  # type: ignore
 

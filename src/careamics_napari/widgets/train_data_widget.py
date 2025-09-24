@@ -1,6 +1,6 @@
 """A widget allowing users to select data source for the training."""
 
-from typing import TYPE_CHECKING, Optional
+# from typing import TYPE_CHECKING
 
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
@@ -11,20 +11,19 @@ from qtpy.QtWidgets import (
 )
 from typing_extensions import Self
 
-from careamics_napari.signals import TrainingSignal
 from careamics_napari.widgets import FolderWidget, layer_choice
-from careamics_napari.widgets.utils import bind
 from careamics_napari.careamics_utils import BaseConfig
+# from careamics_napari.widgets.utils import bind
 
 
-if TYPE_CHECKING:
-    import napari
-    from napari.layers import Image
+# if TYPE_CHECKING:
+#     import napari
+#     from napari.layers import Image
 
 # at run time
 try:
     import napari
-    from napari.layers import Image
+    # from napari.layers import Image
 except ImportError:
     _has_napari = False
 else:
@@ -62,28 +61,53 @@ class TrainDataWidget(QTabWidget):
 
         # QTabs
         layer_tab = QWidget()
-        # layer_tab.setLayout(QVBoxLayout())
         disk_tab = QWidget()
-        # disk_tab.setLayout(QVBoxLayout())
 
         # add tabs
-        self.addTab(layer_tab, "From layers")
+        _tab_idx = 0
+        if _has_napari and napari.current_viewer() is not None:
+            # tab for selecting data from napari layers
+            self.addTab(layer_tab, "From layers")
+            self.setTabToolTip(_tab_idx, "Use images from napari layers")
+            # add tab contents
+            self._set_layer_tab(layer_tab)
+            _tab_idx += 1
+        # tab for selecting data from disk
         self.addTab(disk_tab, "From disk")
-        self.setTabToolTip(0, "Use images from napari layers")
-        self.setTabToolTip(1, "Use patches saved on the disk")
-
-        # set tabs
-        self._set_layer_tab(layer_tab)
+        self.setTabToolTip(_tab_idx, "Use patches saved on the disk")
         self._set_disk_tab(disk_tab)
 
-        # set active tab actions
-        # self.currentChanged.connect(self._set_data_source)
-        # self._set_data_source(self.currentIndex())
+    def get_data_sources(self) -> dict[str, list] | None:
+        """Get the selected data sources."""
+        if (
+            self.img_train.value is None  # type: ignore
+            and len(self.train_images_folder.get_folder()) == 0
+        ):
+            # no training data has been selected
+            return None
 
-    def _set_layer_tab(
-        self: Self,
-        layer_tab: QWidget,
-    ) -> None:
+        if self.currentIndex() == 0:
+            # data is expected from napari layers
+            train_data = [self.img_train.value.data]  # type: ignore
+            val_data = [self.img_val.value.data]      # type: ignore
+            if self.use_target:
+                train_data.append(self.target_train.value.data)  # type: ignore
+                val_data.append(self.target_val.value.data)      # type: ignore
+
+        else:
+            # data is expected from disk
+            train_data = [self.train_images_folder.get_folder()]
+            val_data = [self.val_images_folder.get_folder()]
+            if self.use_target:
+                train_data.append(self.train_target_folder.get_folder())
+                val_data.append(self.val_target_folder.get_folder())
+
+        return {
+            "train": train_data,
+            "val": val_data
+        }
+
+    def _set_layer_tab(self: Self, layer_tab: QWidget) -> None:
         """Set up the layer tab.
 
         Parameters
@@ -91,64 +115,38 @@ class TrainDataWidget(QTabWidget):
         layer_tab : QWidget
             Layer tab widget.
         """
-        if _has_napari and napari.current_viewer() is not None:
-            form = QFormLayout()
-            form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
-            form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)  # type: ignore
-            form.setContentsMargins(12, 12, 0, 0)
+        form = QFormLayout()
+        form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)  # type: ignore
+        form.setContentsMargins(12, 12, 0, 0)
 
-            self.img_train = layer_choice()
-            self.img_train.native.setToolTip("Select the training layer.")
+        self.img_train = layer_choice()
+        self.img_train.native.setToolTip("Select the training layer.")
 
-            self.img_val = layer_choice()
-            self.img_train.native.setToolTip("Select the validation layer.")
+        self.img_val = layer_choice()
+        self.img_train.native.setToolTip("Select the validation layer.")
 
-            # connection actions for images
-            # self.img_train.changed.connect(self._update_train_layer)
-            # self.img_val.changed.connect(self._update_val_layer)
+        if self.use_target:
+            # get the target layers
+            self.target_train = layer_choice()
+            self.target_val = layer_choice()
 
-            # to cover the case when image was loaded before the plugin
-            # if self.img_train.value is not None:
-            #     self._update_train_layer(self.img_train.value)
-            # if self.img_val.value is not None:
-            #     self._update_val_layer(self.img_val.value)
+            # tool tips
+            self.target_train.native.setToolTip("Select a training target layer.")
+            self.target_val.native.setToolTip("Select a validation target layer.")
 
-            if self.use_target:
-                # get the target layers
-                self.target_train = layer_choice()
-                self.target_val = layer_choice()
-
-                # tool tips
-                self.target_train.native.setToolTip("Select a training target layer.")
-                self.target_val.native.setToolTip("Select a validation target layer.")
-
-                # connection actions for targets
-                # self.target_train.changed.connect(self._update_train_target_layer)
-                # self.target_val.changed.connect(self._update_val_target_layer)
-
-                # to cover the case when image was loaded before the plugin
-                # if self.target_train.value is not None:
-                #     self._update_train_target_layer(self.target_train.value)
-                # if self.target_val.value is not None:
-                #     self._update_val_target_layer(self.target_val.value)
-
-                form.addRow("Train", self.img_train.native)
-                form.addRow("Val", self.img_val.native)
-                form.addRow("Train target", self.target_train.native)
-                form.addRow("Val target", self.target_val.native)
-
-            else:
-                form.addRow("Train", self.img_train.native)
-                form.addRow("Val", self.img_val.native)
-
-            # layer_tab.layout().addLayout(form)
-            vbox = QVBoxLayout()
-            vbox.addLayout(form)
-            layer_tab.setLayout(vbox)
+            form.addRow("Train", self.img_train.native)
+            form.addRow("Val", self.img_val.native)
+            form.addRow("Train target", self.target_train.native)
+            form.addRow("Val target", self.target_val.native)
 
         else:
-            # simply remove the tab
-            self.removeTab(0)
+            form.addRow("Train", self.img_train.native)
+            form.addRow("Val", self.img_val.native)
+
+        vbox = QVBoxLayout()
+        vbox.addLayout(form)
+        layer_tab.setLayout(vbox)
 
     def _set_disk_tab(self: Self, disk_tab: QWidget) -> None:
         """Set up the disk tab.
@@ -158,12 +156,10 @@ class TrainDataWidget(QTabWidget):
         disk_tab : QWidget
             Disk tab widget.
         """
-        # disk tab
-        # buttons = QWidget()
         form = QFormLayout()
         form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
         form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)  # type: ignore
-        # form.setSpacing(0)
+        form.setContentsMargins(12, 12, 0, 0)
 
         self.train_images_folder = FolderWidget("Choose")
         self.val_images_folder = FolderWidget("Choose")
@@ -190,14 +186,6 @@ class TrainDataWidget(QTabWidget):
                 "Select a folder containing the validation\n" "images."
             )
 
-            # add actions to target
-            # self.train_target_folder.get_text_widget().textChanged.connect(
-            #     self._update_train_target_folder
-            # )
-            # self.val_target_folder.get_text_widget().textChanged.connect(
-            #     self._update_val_target_folder
-            # )
-
         else:
             self.train_images_folder.setToolTip(
                 "Select a folder containing the training\n" "images."
@@ -209,118 +197,9 @@ class TrainDataWidget(QTabWidget):
                 "be extracted from the training data."
             )
 
-        # add actions
-        # self.train_images_folder.get_text_widget().textChanged.connect(
-        #     self._update_train_folder
-        # )
-        # self.val_images_folder.get_text_widget().textChanged.connect(
-        #     self._update_val_folder
-        # )
-
-        # buttons.setLayout(form)
-        # disk_tab.layout().addWidget(buttons)
         vbox = QVBoxLayout()
         vbox.addLayout(form)
         disk_tab.setLayout(vbox)
-
-    def _set_data_source(self: Self, index: int) -> None:
-        """Set the signal data source to the selected tab.
-
-        Parameters
-        ----------
-        index : int
-            Index of the selected tab.
-        """
-        if self.configuration is not None:
-            self.configuration.load_from_disk = index == self.count() - 1
-
-    def _update_train_layer(self: Self, layer: Image) -> None:
-        """Update the training layer.
-
-        Parameters
-        ----------
-        layer : Image
-            Training layer.
-        """
-        if self.configuration is not None:
-            self.configuration.layer_train = layer
-
-    def _update_val_layer(self: Self, layer: Image) -> None:
-        """Update the validation layer.
-
-        Parameters
-        ----------
-        layer : Image
-            Validation layer.
-        """
-        if self.configuration is not None:
-            self.configuration.layer_val = layer
-
-    def _update_train_target_layer(self: Self, layer: Image) -> None:
-        """Update the training target layer.
-
-        Parameters
-        ----------
-        layer : Image
-            Training target layer.
-        """
-        if self.configuration is not None:
-            self.configuration.layer_train_target = layer
-
-    def _update_val_target_layer(self: Self, layer: Image) -> None:
-        """Update the validation target layer.
-
-        Parameters
-        ----------
-        layer : Image
-            Validation target layer.
-        """
-        if self.configuration is not None:
-            self.configuration.layer_val_target = layer
-
-    def _update_train_folder(self: Self, folder: str) -> None:
-        """Update the training folder.
-
-        Parameters
-        ----------
-        folder : str
-            Training folder.
-        """
-        if self.configuration is not None:
-            self.configuration.path_train = folder
-
-    def _update_val_folder(self: Self, folder: str) -> None:
-        """Update the validation folder.
-
-        Parameters
-        ----------
-        folder : str
-            Validation folder.
-        """
-        if self.configuration is not None:
-            self.configuration.path_val = folder
-
-    def _update_train_target_folder(self: Self, folder: str) -> None:
-        """Update the training target folder.
-
-        Parameters
-        ----------
-        folder : str
-            Training target folder.
-        """
-        if self.configuration is not None:
-            self.configuration.path_train_target = folder
-
-    def _update_val_target_folder(self: Self, folder: str) -> None:
-        """Update the validation target folder.
-
-        Parameters
-        ----------
-        folder : str
-            Validation target folder.
-        """
-        if self.configuration is not None:
-            self.configuration.path_val_target = folder
 
 
 if __name__ == "__main__":
@@ -342,11 +221,11 @@ if __name__ == "__main__":
     # # Run the application event loop
     # sys.exit(app.exec_())
 
-    import qdarktheme
+    # import qdarktheme
     import napari
     from careamics_napari.careamics_utils import get_default_n2v_config
 
-    qdarktheme.enable_hi_dpi()
+    # qdarktheme.enable_hi_dpi()
 
     config = get_default_n2v_config()
     # create a Viewer
@@ -359,5 +238,5 @@ if __name__ == "__main__":
     # add image to napari
     # viewer.add_image(data[0][0], name=data[0][1]['name'])
     # start UI
-    qdarktheme.setup_theme("auto")
+    # qdarktheme.setup_theme("auto")
     napari.run()

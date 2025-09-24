@@ -109,8 +109,8 @@ class ConfigurationWidget(QGroupBox):
         self._bind_properties()
 
     def update_config(self) -> None:
-        """Update the configuration with the current values."""
-        # update axes (from axes widget)
+        """Update the configuration from the UI."""
+        # update config axes (from axes widget)
         self.axes_widget.update_config()
         # is 3D
         self.configuration.is_3D = self.is_3D
@@ -126,6 +126,17 @@ class ConfigurationWidget(QGroupBox):
         self.configuration.set_3D(
             self.is_3D, self.configuration.data_config.axes, patch_size
         )  # maybe not necessary, but let's have it to be sure.
+        print("config widget:\n", self.configuration)
+
+    def _enable_3d_changed(self: Self, state: bool) -> None:
+        """Update the signal 3D state.
+
+        Parameters
+        ----------
+        state : bool
+            3D state.
+        """
+        self.patch_Z_spin.setEnabled(state)
 
     def _bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""

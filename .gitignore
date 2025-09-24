@@ -1,6 +1,7 @@
 checkpoints
 csv_logs
 tb_logs
+fault_log.*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

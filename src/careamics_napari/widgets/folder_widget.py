@@ -23,18 +23,21 @@ class FolderWidget(QWidget):
         """
         super().__init__()
 
-        self.setLayout(QHBoxLayout())
-        self.layout().setSpacing(0)
-        self.layout().setContentsMargins(0, 0, 0, 0)
+        hbox = QHBoxLayout()
+        hbox.setSpacing(0)
+        hbox.setContentsMargins(0, 0, 0, 0)
 
         # text field
         self.text_field = QLineEdit("")
-        self.layout().addWidget(self.text_field)
+        self.text_field.setReadOnly(True)
+        hbox.addWidget(self.text_field)
 
         # folder selection button
         self.button = QPushButton(text)
-        self.layout().addWidget(self.button)
+        hbox.addWidget(self.button)
         self.button.clicked.connect(self._open_dialog)
+
+        self.setLayout(hbox)
 
     def _open_dialog(self: Self) -> None:
         """Open a dialog to select a folder."""

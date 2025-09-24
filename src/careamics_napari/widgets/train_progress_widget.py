@@ -8,7 +8,8 @@ from qtpy.QtWidgets import (
 )
 from typing_extensions import Self
 
-from careamics_napari.signals import TrainingSignal, TrainingState, TrainingStatus
+from careamics_napari.signals import TrainingState, TrainingStatus
+from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.widgets import TBPlotWidget, create_progressbar
 
 
@@ -17,40 +18,40 @@ class TrainProgressWidget(QGroupBox):
 
     Parameters
     ----------
+    careamics_config : Configuration
+            careamics configuration object.
     train_status : TrainingStatus or None, default=None
         Signal representing the training status.
-    train_config : TrainingSignal or None, default=None
-        Signal representing the training parameters.
     """
 
     def __init__(
         self: Self,
+        careamics_config: BaseConfig,
         train_status: Optional[TrainingStatus] = None,
-        train_config: Optional[TrainingSignal] = None,
     ) -> None:
         """Initialize the widget.
 
         Parameters
         ----------
+        careamics_config : Configuration
+            careamics configuration object.
         train_status : TrainingStatus or None, default=None
             Signal representing the training status.
-        train_config : TrainingSignal or None, default=None
-            Signal representing the training parameters.
         """
         super().__init__()
 
+        self.configuration = careamics_config
         self.train_status = (
             train_status
             if train_status is not None  # for typing purposes
             else TrainingStatus()  # type: ignore
         )
 
-        self.setTitle("Training progress")
-        self.setLayout(QVBoxLayout())
+        self.setTitle("Training Progress")
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 0)
 
         # progress bars
-        self.layout().setContentsMargins(20, 20, 20, 0)
-
         self.pb_epochs = create_progressbar(
             max_value=self.train_status.max_epochs,
             text_format=f"Epoch ?/{self.train_status.max_epochs}",
@@ -63,24 +64,24 @@ class TrainProgressWidget(QGroupBox):
             value=0,
         )
 
-        self.layout().addWidget(self.pb_epochs)
-        self.layout().addWidget(self.pb_batch)
-
         # plot widget
         self.plot = TBPlotWidget(
-            max_width=300, max_height=300, min_height=250, train_signal=train_config
+            max_width=300, max_height=300,
+            min_height=250, work_dir=self.configuration.work_dir
         )
-        self.layout().addWidget(self.plot.native)
 
-        # actions
-        if self.train_status is not None:
-            self.train_status.events.state.connect(self._update_training_state)
+        layout.addWidget(self.pb_epochs)
+        layout.addWidget(self.pb_batch)
+        layout.addWidget(self.plot.native)
+        self.setLayout(layout)
 
-            self.train_status.events.epoch_idx.connect(self._update_epoch)
-            self.train_status.events.max_epochs.connect(self._update_max_epoch)
-            self.train_status.events.batch_idx.connect(self._update_batch)
-            self.train_status.events.max_batches.connect(self._update_max_batch)
-            self.train_status.events.val_loss.connect(self._update_loss)
+        # set actions based on the training status
+        self.train_status.events.state.connect(self._update_training_state)
+        self.train_status.events.epoch_idx.connect(self._update_epoch)
+        self.train_status.events.max_epochs.connect(self._update_max_epoch)
+        self.train_status.events.batch_idx.connect(self._update_batch)
+        self.train_status.events.max_batches.connect(self._update_max_batch)
+        self.train_status.events.val_loss.connect(self._update_loss)
 
     def _update_training_state(self: Self, state: TrainingState) -> None:
         """Update the widget according to the training state.
@@ -141,21 +142,18 @@ class TrainProgressWidget(QGroupBox):
 
 
 if __name__ == "__main__":
-    import sys
+    # import sys
+    import napari
+    # from qtpy.QtWidgets import QApplication
+    from careamics_napari.careamics_utils import get_default_n2v_config
 
-    from qtpy.QtWidgets import QApplication
-
-    # Create a QApplication instance
-    app = QApplication(sys.argv)
-
-    # create signal
-    signal = TrainingStatus()  # type: ignore
-
-    # Instantiate widget
-    widget = TrainProgressWidget(signal)
-
-    # Show the widget
-    widget.show()
-
-    # Run the application event loop
-    sys.exit(app.exec_())
+    config = get_default_n2v_config()
+    # app = QApplication(sys.argv)
+    # widget = TrainProgressWidget(config)
+    # widget.show()
+    # sys.exit(app.exec_())
+    viewer = napari.Viewer()
+    viewer.window.add_dock_widget(
+        TrainProgressWidget(config)
+    )
+    napari.run()
