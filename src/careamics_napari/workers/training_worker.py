@@ -14,11 +14,13 @@ from superqt.utils import thread_worker
 from careamics_napari.careamics_utils import UpdaterCallBack
 from careamics_napari.careamics_utils.configuration import create_configuration
 from careamics_napari.signals import (
+    PredictionStatus,
     TrainingSignal,
     TrainingState,
     TrainUpdate,
     TrainUpdateType,
 )
+from careamics_napari.utils.prediction_callback import StopPredictionCallback
 
 
 # TODO register CAREamist to continue training and predict
@@ -30,6 +32,7 @@ def train_worker(
     training_queue: Queue,
     predict_queue: Queue,
     careamist: Optional[CAREamist] = None,
+    pred_status: Optional[PredictionStatus] = None,
 ) -> Generator[TrainUpdate, None, None]:
     """Model training worker.
 
@@ -43,6 +46,8 @@ def train_worker(
         Prediction update queue.
     careamist : CAREamist or None, default=None
         CAREamist instance.
+    pred_status : PredictionStatus or None, default=None
+        Prediction status for stop callback.
 
     Yields
     ------
@@ -57,6 +62,7 @@ def train_worker(
             training_queue,
             predict_queue,
             careamist,
+            pred_status,
         ),
     )
     training.start()
@@ -94,6 +100,7 @@ def _train(
     training_queue: Queue,
     predict_queue: Queue,
     careamist: Optional[CAREamist] = None,
+    pred_status: Optional[PredictionStatus] = None,
 ) -> None:
     """Run the training.
 
@@ -107,6 +114,8 @@ def _train(
         Prediction update queue.
     careamist : CAREamist or None, default=None
         CAREamist instance.
+    pred_status : PredictionStatus or None, default=None
+        Prediction status for stop callback.
     """
     # get configuration and queue
     try:
@@ -115,9 +124,10 @@ def _train(
 
         # Create CAREamist
         if careamist is None:
-            careamist = CAREamist(
-                config, callbacks=[UpdaterCallBack(training_queue, predict_queue)]
-            )
+            callbacks = [UpdaterCallBack(training_queue, predict_queue)]
+            if pred_status is not None:
+                callbacks.append(StopPredictionCallback(pred_status))
+            careamist = CAREamist(config, callbacks=callbacks)
 
         else:
             # only update the number of epochs

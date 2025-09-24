@@ -300,6 +300,7 @@ class PredictionWidget(QGroupBox):
             or state == PredictionState.STOPPED
         ):
             self.predict_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
 
 
 if __name__ == "__main__":

@@ -247,6 +247,7 @@ class TrainPlugin(QWidget):
                 self._training_queue,
                 self._prediction_queue,
                 self.careamist,
+                self.pred_status,
             )
 
             self.train_worker.yielded.connect(self._update_from_training)
@@ -277,14 +278,7 @@ class TrainPlugin(QWidget):
             self.pred_worker.start()
 
         elif state == PredictionState.STOPPED:
-            # this will cause an exception in careamist.predict
-            # self.careamist.trainer.predict_loop.teardown()
-            # exhaust the data fetcher to stop the prediction
-            deque(self.careamist.trainer.predict_loop._data_fetcher, maxlen=0)
-            self.careamist.trainer.predict_loop.reset()
-            self._prediction_queue.put(
-                PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
-            )
+            pass
 
     def _saving_state_changed(self, state: SavingState) -> None:
         """Handle saving state changes.

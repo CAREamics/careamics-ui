@@ -15,6 +15,7 @@ from careamics_napari.signals import (
     PredictionUpdate,
     PredictionUpdateType,
 )
+from careamics_napari.utils import PredictionStoppedException
 
 
 # TODO register CAREamist to continue training and predict
@@ -165,6 +166,11 @@ def _predict(
         if result is not None and len(result) > 0:
             update_queue.put(PredictionUpdate(PredictionUpdateType.SAMPLE, result))
 
+    except PredictionStoppedException as e:
+        # Handle user-requested stop
+        update_queue.put(PredictionUpdate(PredictionUpdateType.STATE, PredictionState.STOPPED))
+        return
+        
     except Exception as e:
         traceback.print_exc()
 
