@@ -4,26 +4,24 @@ import traceback
 from collections.abc import Generator
 from queue import Queue
 from threading import Thread
-from typing import Optional, Union
 
 from careamics import CAREamist
+from numpy.typing import NDArray
 from superqt.utils import thread_worker
 
+from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.signals import (
-    PredictionSignal,
     PredictionState,
     PredictionUpdate,
     PredictionUpdateType,
 )
 
 
-# TODO register CAREamist to continue training and predict
-# TODO how to load pre-trained?
-# TODO pass careamist here if it already exists?
 @thread_worker
 def predict_worker(
     careamist: CAREamist,
-    config_signal: PredictionSignal,
+    pred_data: NDArray | str,
+    configuration: BaseConfig,
     update_queue: Queue,
 ) -> Generator[PredictionUpdate, None, None]:
     """Model prediction worker.
@@ -32,8 +30,10 @@ def predict_worker(
     ----------
     careamist : CAREamist
         CAREamist instance.
-    config_signal : PredictionSignal
-        Prediction signal.
+    pred_data : NDArray | str
+        Prediction data source.
+    configuration : BaseConfig
+        careamics configuration.
     update_queue : Queue
         Queue used to send updates to the UI.
 
@@ -47,7 +47,8 @@ def predict_worker(
         target=_predict,
         args=(
             careamist,
-            config_signal,
+            pred_data,
+            configuration,
             update_queue,
         ),
     )
@@ -78,7 +79,7 @@ def _push_exception(queue: Queue, e: Exception) -> None:
     """
     try:
         raise e
-    except Exception as _:
+    except Exception:
         traceback.print_exc()
 
     queue.put(PredictionUpdate(PredictionUpdateType.EXCEPTION, e))
@@ -86,7 +87,8 @@ def _push_exception(queue: Queue, e: Exception) -> None:
 
 def _predict(
     careamist: CAREamist,
-    config_signal: PredictionSignal,
+    pred_data: NDArray | str,
+    configuration: BaseConfig,
     update_queue: Queue,
 ) -> None:
     """Run the prediction.
@@ -95,71 +97,25 @@ def _predict(
     ----------
     careamist : CAREamist
         CAREamist instance.
-    config_signal : PredictionSignal
-        Prediction signal.
+    data_source : NDArray | str
+        Prediction data source.
+    configuration : BaseConfig
+        careamics configuration.
     update_queue : Queue
         Queue used to send updates to the UI.
     """
-    # Format data
-    if config_signal.load_from_disk:
-
-        if config_signal.path_pred == "":
-            _push_exception(update_queue, ValueError("Prediction data path is empty."))
-            return
-
-        pred_data = config_signal.path_pred
-
-    else:
-        if config_signal.layer_pred is None:
-            _push_exception(
-                update_queue, ValueError("Prediction layer has not been selected.")
-            )
-            return
-
-        elif config_signal.layer_pred.data is None:
-            _push_exception(
-                update_queue,
-                ValueError(
-                    f"Prediction layer {config_signal.layer_pred.name} is empty."
-                ),
-            )
-            return
-        else:
-            pred_data = config_signal.layer_pred.data
-
-    # tiling
-    if config_signal.tiled:
-        if config_signal.is_3d:
-            tile_size: Optional[Union[tuple[int, int, int], tuple[int, int]]] = (
-                config_signal.tile_size_z,
-                config_signal.tile_size_xy,
-                config_signal.tile_size_xy,
-            )
-            tile_overlap: Optional[Union[tuple[int, int, int], tuple[int, int]]] = (
-                config_signal.tile_overlap_z,
-                config_signal.tile_overlap_xy,
-                config_signal.tile_overlap_xy,
-            )
-        else:
-            tile_size = (config_signal.tile_size_xy, config_signal.tile_size_xy)
-            tile_overlap = (
-                config_signal.tile_overlap_xy,
-                config_signal.tile_overlap_xy,
-            )
-        batch_size = config_signal.batch_size
-    else:
-        tile_size = None
-        tile_overlap = None
-        batch_size = 1
-
-    # Predict with CAREamist
+    data_type = "tiff" if isinstance(pred_data, str) else "array"
+    tile_overlap = [configuration.tile_overlap_xy, configuration.tile_overlap_xy]
+    if configuration.is_3D:
+        tile_overlap.insert(0, configuration.tile_overlap_z)
+    # predict with careamist
     try:
         result = careamist.predict(  # type: ignore
-            pred_data,
-            data_type="tiff" if config_signal.load_from_disk else "array",
-            tile_size=tile_size,
-            tile_overlap=tile_overlap,
-            batch_size=batch_size,
+            pred_data,  # type: ignore
+            data_type=data_type,  # type: ignore
+            tile_size=configuration.tile_size,
+            tile_overlap=tuple(tile_overlap),
+            batch_size=configuration.pred_batch_size,
         )
 
         if result is not None and len(result) > 0:

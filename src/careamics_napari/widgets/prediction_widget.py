@@ -1,7 +1,6 @@
 """Widget used to run prediction from the Training plugin."""
 
-from typing import Optional
-
+import numpy as np
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -10,21 +9,23 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QPushButton,
     QVBoxLayout,
-    QWidget,
 )
 from typing_extensions import Self
 
+from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.signals import (
-    PredictionSignal,
     PredictionState,
     PredictionStatus,
-    TrainingSignal,
     TrainingState,
     TrainingStatus,
 )
-
-from .predict_data_widget import PredictDataWidget
-from .qt_widgets import PowerOfTwoSpinBox, create_int_spinbox, create_progressbar
+from careamics_napari.widgets.predict_data_widget import PredictDataWidget
+from careamics_napari.widgets.qt_widgets import (
+    PowerOfTwoSpinBox,
+    create_int_spinbox,
+    create_progressbar,
+)
+from careamics_napari.widgets.utils import bind
 
 
 class PredictionWidget(QGroupBox):
@@ -44,10 +45,10 @@ class PredictionWidget(QGroupBox):
 
     def __init__(
         self: Self,
-        train_status: Optional[TrainingStatus] = None,
-        pred_status: Optional[PredictionStatus] = None,
-        train_signal: Optional[TrainingSignal] = None,
-        pred_signal: Optional[PredictionSignal] = None,
+        careamics_config: BaseConfig,
+        train_status: TrainingStatus | None = None,
+        pred_status: PredictionStatus | None = None,
+        # pred_signal: Optional[PredictionSignal] = None,
     ) -> None:
         """Initialize the widget.
 
@@ -64,56 +65,41 @@ class PredictionWidget(QGroupBox):
         """
         super().__init__()
 
+        self.configuration = careamics_config
         self.train_status = (
             TrainingStatus() if train_status is None else train_status  # type: ignore
         )
         self.pred_status = (
             PredictionStatus() if pred_status is None else pred_status  # type: ignore
         )
-        self.train_signal = (
-            TrainingSignal() if train_signal is None else train_signal  # type: ignore
-        )
-        self.pred_signal = PredictionSignal() if pred_signal is None else pred_signal
 
         self.setTitle("Prediction")
-        self.setLayout(QVBoxLayout())
 
         # data selection
-        predict_data_widget = PredictDataWidget(self.pred_signal)
-        self.layout().addWidget(predict_data_widget)
+        self.predict_data_widget = PredictDataWidget()
 
         # checkbox
         self.tiling_cbox = QCheckBox("Tile prediction")
+        self.tiling_cbox.setChecked(True)
         self.tiling_cbox.setToolTip(
-            "Select to predict the image by tiles, allowing "
-            "to predict on large images."
+            "Select to predict the image by tiles, allowing to predict on large images."
         )
-        self.layout().addWidget(self.tiling_cbox)
 
         # tiling spinboxes
-        self.tile_size_xy = PowerOfTwoSpinBox(64, 1024, self.pred_signal.tile_size_xy)
-        self.tile_size_xy.setToolTip("Tile size in the xy dimension.")
-        self.tile_size_xy.setEnabled(False)
+        self.tile_size_xy_spin = PowerOfTwoSpinBox(64, 1024, 64)
+        self.tile_size_xy_spin.setToolTip("Tile size in the xy dimension.")
+        # self.tile_size_xy.setEnabled(False)
 
-        self.tile_size_z = PowerOfTwoSpinBox(4, 32, self.pred_signal.tile_size_z)
-        self.tile_size_z.setToolTip("Tile size in the z dimension.")
-        self.tile_size_z.setEnabled(False)
+        self.tile_size_z_spin = PowerOfTwoSpinBox(4, 32, 8)
+        self.tile_size_z_spin.setToolTip("Tile size in the z dimension.")
+        self.tile_size_z_spin.setEnabled(self.configuration.is_3D)
 
+        # batch size spinbox
         self.batch_size_spin = create_int_spinbox(1, 512, 1, 1)
         self.batch_size_spin.setToolTip(
             "Number of patches per batch (decrease if GPU memory is insufficient)"
         )
-        self.batch_size_spin.setEnabled(False)
-
-        tiling_form = QFormLayout()
-        tiling_form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-        tiling_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-        tiling_form.addRow("XY tile size", self.tile_size_xy)
-        tiling_form.addRow("Z tile size", self.tile_size_z)
-        tiling_form.addRow("Batch size", self.batch_size_spin)
-        tiling_widget = QWidget()
-        tiling_widget.setLayout(tiling_form)
-        self.layout().addWidget(tiling_widget)
+        # self.batch_size_spin.setEnabled(False)
 
         # prediction progress bar
         self.pb_prediction = create_progressbar(
@@ -122,8 +108,6 @@ class PredictionWidget(QGroupBox):
         self.pb_prediction.setToolTip("Show the progress of the prediction")
 
         # predict button
-        predictions = QWidget()
-        predictions.setLayout(QHBoxLayout())
         self.predict_button = QPushButton("Predict", self)
         self.predict_button.setMinimumWidth(120)
         self.predict_button.setEnabled(False)
@@ -134,67 +118,39 @@ class PredictionWidget(QGroupBox):
         self.stop_button.setEnabled(False)
         self.stop_button.setToolTip("Stop the prediction")
 
-        predictions.layout().addWidget(self.predict_button, alignment=Qt.AlignLeft)
-        predictions.layout().addWidget(self.stop_button, alignment=Qt.AlignRight)
-
-        # add to the group
-        self.layout().addWidget(self.pb_prediction)
-        self.layout().addWidget(predictions)
+        # layout
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.predict_data_widget)
+        vbox.addWidget(self.tiling_cbox)
+        tiling_form = QFormLayout()
+        tiling_form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        tiling_form.setFieldGrowthPolicy(
+            QFormLayout.AllNonFixedFieldsGrow  # type: ignore
+        )
+        tiling_form.addRow("XY tile size", self.tile_size_xy_spin)
+        tiling_form.addRow("Z tile size", self.tile_size_z_spin)
+        tiling_form.addRow("Batch size", self.batch_size_spin)
+        vbox.addLayout(tiling_form)
+        vbox.addWidget(self.pb_prediction)
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.predict_button, alignment=Qt.AlignLeft)  # type: ignore
+        hbox.addWidget(self.stop_button, alignment=Qt.AlignRight)  # type: ignore
+        vbox.addLayout(hbox)
+        self.setLayout(vbox)
 
         # actions
-        self.tiling_cbox.stateChanged.connect(self._update_tiles)
+        self.tiling_cbox.clicked.connect(self._update_tilings)
+        self.predict_button.clicked.connect(self._predict_button_clicked)
+        self.stop_button.clicked.connect(self._stop_button_clicked)
 
-        if self.pred_status is not None and self.train_status is not None:
-            # what to do when the buttons are clicked
-            self.predict_button.clicked.connect(self._predict_button_clicked)
-            self.stop_button.clicked.connect(self._stop_button_clicked)
+        self.pred_status.events.state.connect(self._update_button_from_pred)
+        self.pred_status.events.sample_idx.connect(self._update_sample_idx)
+        self.pred_status.events.max_samples.connect(self._update_max_sample)
 
-            self.tile_size_xy.valueChanged.connect(self._set_xy_tile_size)
-            self.tile_size_z.valueChanged.connect(self._set_z_tile_size)
-            self.batch_size_spin.valueChanged.connect(self._set_batch_size)
+        # bind properties
+        self._bind_properties()
 
-            # listening to the signals
-            self.train_signal.events.is_3d.connect(self._set_3d)
-            self.train_status.events.state.connect(self._update_button_from_train)
-            self.pred_status.events.state.connect(self._update_button_from_pred)
-
-            self.pred_status.events.sample_idx.connect(self._update_sample_idx)
-            self.pred_status.events.max_samples.connect(self._update_max_sample)
-
-    def _set_xy_tile_size(self: Self, size: int) -> None:
-        """Update the signal tile size in the xy dimension.
-
-        Parameters
-        ----------
-        size : int
-            The new tile size in the xy dimension.
-        """
-        if self.pred_signal is not None:
-            self.pred_signal.tile_size_xy = size
-
-    def _set_z_tile_size(self: Self, size: int) -> None:
-        """Update the signal tile size in the z dimension.
-
-        Parameters
-        ----------
-        size : int
-            The new tile size in the z dimension.
-        """
-        if self.pred_signal is not None:
-            self.pred_signal.tile_size_z = size
-
-    def _set_batch_size(self: Self, size: int) -> None:
-        """Update the signal batch size.
-
-        Parameters
-        ----------
-        size : int
-            The new batch size.
-        """
-        if self.pred_signal is not None:
-            self.pred_signal.batch_size = size
-
-    def _set_3d(self: Self, state: bool) -> None:
+    def set_3d(self: Self, state: bool) -> None:
         """Enable the z tile size spinbox if the data is 3D.
 
         Parameters
@@ -202,23 +158,63 @@ class PredictionWidget(QGroupBox):
         state : bool
             The new state of the 3D checkbox.
         """
-        if self.pred_signal.tiled:
-            self.tile_size_z.setEnabled(state)
+        # this method can be used by the parent plugin when the train config is updated.
+        self.configuration.is_3D = state
+        self.tile_size_z_spin.setEnabled(self.do_tiling and state)
 
-    def _update_tiles(self: Self, state: bool) -> None:
-        """Update the weidgets and the signal tiling parameter.
+    def update_button_from_train(self: Self, state: TrainingState) -> None:
+        """Update the predict button based on the training state.
+
+        Parameters
+        ----------
+        state : TrainingState
+            The new state of the training plugin.
+        """
+        if state == TrainingState.DONE:
+            self.predict_button.setEnabled(True)
+        else:
+            self.predict_button.setEnabled(False)
+
+    def get_data_source(self) -> str | np.ndarray | None:
+        """Get the selected data sources from the predict data widget."""
+        return self.predict_data_widget.get_data_sources()
+
+    def update_config(self) -> None:
+        """Update the prediction configuration from the UI element."""
+        # tile size
+        self.configuration.tile_size = None
+        if self.do_tiling:
+            _tile_size = [self.tile_size_xy, self.tile_size_xy]
+            if self.configuration.is_3D:
+                _tile_size.insert(0, self.tile_size_z)
+            self.configuration.tile_size = tuple(_tile_size)
+
+        # batch size
+        self.configuration.pred_batch_size = self.batch_size
+
+    def _bind_properties(self) -> None:
+        """Create and bind the properties to the UI elements."""
+        # tiling
+        type(self).do_tiling = bind(self.tiling_cbox, "checked", True)
+        # tile size in xy
+        type(self).tile_size_xy = bind(self.tile_size_xy_spin, "value", 64)
+        # tile size in z
+        type(self).tile_size_z = bind(self.tile_size_z_spin, "value", 8)
+        # batch size
+        type(self).batch_size = bind(self.batch_size_spin, "value", 1)
+
+    def _update_tilings(self: Self, state: bool) -> None:
+        """Update the widgets and the signal tiling parameter.
 
         Parameters
         ----------
         state : bool
             The new state of the tiling checkbox.
         """
-        self.pred_signal.tiled = state
-        self.tile_size_xy.setEnabled(state)
+        # self.do_tiling = state
+        self.tile_size_xy_spin.setEnabled(state)
         self.batch_size_spin.setEnabled(state)
-
-        if self.train_signal.is_3d:
-            self.tile_size_z.setEnabled(state)
+        self.tile_size_z_spin.setEnabled(state and self.configuration.is_3D)
 
     def _update_3d_tiles(self: Self, state: bool) -> None:
         """Enable the z tile size spinbox if the data is 3D and tiled.
@@ -229,7 +225,7 @@ class PredictionWidget(QGroupBox):
             The new state of the 3D checkbox.
         """
         if self.pred_signal.tiled:
-            self.tile_size_z.setEnabled(state)
+            self.tile_size_z_spin.setEnabled(state)
 
     def _update_max_sample(self: Self, max_sample: int) -> None:
         """Update the maximum value of the progress bar.
@@ -251,7 +247,7 @@ class PredictionWidget(QGroupBox):
         """
         self.pb_prediction.setValue(sample + 1)
         self.pb_prediction.setFormat(
-            f"Sample {sample+1}/{self.pred_status.max_samples}"
+            f"Sample {sample + 1}/{self.pred_status.max_samples}"
         )
 
     def _predict_button_clicked(self: Self) -> None:
@@ -262,29 +258,15 @@ class PredictionWidget(QGroupBox):
                 or self.train_status.state == TrainingState.DONE
                 or self.pred_status.state == PredictionState.CRASHED
             ):
-                self.pred_status.state = PredictionState.PREDICTING
                 self.predict_button.setEnabled(False)
                 self.stop_button.setEnabled(True)
+                self.pred_status.state = PredictionState.PREDICTING
 
     def _stop_button_clicked(self: Self) -> None:
         """Stop the prediction."""
-        if self.pred_status is not None:
-            if self.pred_status.state == PredictionState.PREDICTING:
-                self.pred_status.state = PredictionState.STOPPED
-                self.stop_button.setEnabled(False)
-
-    def _update_button_from_train(self: Self, state: TrainingState) -> None:
-        """Update the predict button based on the training state.
-
-        Parameters
-        ----------
-        state : TrainingState
-            The new state of the training plugin.
-        """
-        if state == TrainingState.DONE:
-            self.predict_button.setEnabled(True)
-        else:
-            self.predict_button.setEnabled(False)
+        if self.pred_status.state == PredictionState.PREDICTING:
+            self.stop_button.setEnabled(False)
+            self.pred_status.state = PredictionState.STOPPED
 
     def _update_button_from_pred(self: Self, state: PredictionState) -> None:
         """Update the predict button based on the prediction state.
@@ -303,24 +285,25 @@ class PredictionWidget(QGroupBox):
 
 
 if __name__ == "__main__":
-    import sys
+    # import sys
+    import napari
 
-    from qtpy.QtWidgets import QApplication
+    # from qtpy.QtWidgets import QApplication
+    from careamics_napari.careamics_utils import get_default_n2v_config
 
-    # Create a QApplication instance
-    app = QApplication(sys.argv)
-
-    # create signal
+    config = get_default_n2v_config()
     train_status = TrainingStatus()  # type: ignore
     pred_status = PredictionStatus()  # type: ignore
-    pred_signal = PredictionSignal()  # type: ignore
-    train_signal = TrainingSignal()  # type: ignore
 
-    # Instantiate widget
-    widget = PredictionWidget(train_status, pred_status, train_signal, pred_signal)
+    # create a Viewer
+    viewer = napari.Viewer()
 
-    # Show the widget
-    widget.show()
+    # Create a QApplication instance
+    # app = QApplication(sys.argv)
+    widget = PredictionWidget(config, train_status, pred_status)
+    # widget.show()
 
+    viewer.window.add_dock_widget(widget)
+    napari.run()
     # Run the application event loop
-    sys.exit(app.exec_())
+    # sys.exit(app.exec_())

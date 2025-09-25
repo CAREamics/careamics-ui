@@ -54,7 +54,7 @@ class TrainingWidget(QGroupBox):
         self.reset_model_button.clicked.connect(self._reset_clicked)
 
         hbox = QHBoxLayout()
-        hbox.addWidget(self.train_button, alignment=Qt.AlignLeft)        # type: ignore
+        hbox.addWidget(self.train_button, alignment=Qt.AlignLeft)  # type: ignore
         hbox.addWidget(self.reset_model_button, alignment=Qt.AlignLeft)  # type: ignore
 
         vbox = QVBoxLayout()

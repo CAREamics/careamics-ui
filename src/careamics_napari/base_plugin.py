@@ -1,18 +1,16 @@
 from collections import deque
-from pathlib import Path
 from queue import Queue
-from typing import TYPE_CHECKING
 
 import numpy as np
-
 from careamics import CAREamist
+
 # from careamics.config.support import SupportedAlgorithm
 from qtpy.QtCore import Qt
-from qtpy.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QVBoxLayout, QWidget
 from typing_extensions import Self
 
+from careamics_napari.careamics_utils import get_default_n2v_config
 from careamics_napari.signals import (
-    PredictionSignal,
     PredictionState,
     PredictionStatus,
     PredictionUpdate,
@@ -27,6 +25,7 @@ from careamics_napari.signals import (
     TrainUpdate,
     TrainUpdateType,
 )
+from careamics_napari.utils.axes_utils import reshape_prediction
 from careamics_napari.widgets import (
     CAREamicsBanner,
     ConfigurationWidget,
@@ -39,8 +38,6 @@ from careamics_napari.widgets import (
     create_gpu_label,
 )
 from careamics_napari.workers import predict_worker, save_worker, train_worker
-from careamics_napari.careamics_utils import get_default_n2v_config
-from careamics_napari.utils.axes_utils import reshape_prediction
 
 # if TYPE_CHECKING:
 #     import napari
@@ -106,7 +103,7 @@ class BasePlugin(QWidget):
         self.careamics_config = get_default_n2v_config()
 
         # create signals, used to hold the various parameters modified by the UI
-        self.pred_config_signal = PredictionSignal()
+        # self.pred_config_signal = PredictionSignal()
         self.save_config_signal = SavingSignal()
         # make sure that the prediction 3D mode is the same as the training one
         # self.train_config_signal.events.is_3d.connect(self._set_pred_3d)
@@ -153,14 +150,14 @@ class BasePlugin(QWidget):
     def add_train_input_ui(self, use_target: bool = False) -> None:
         """Add the train input data selection UI to the plugin."""
         self.input_data_widget = TrainDataWidget(
-            careamics_config=self.careamics_config,
-            use_target=use_target
+            careamics_config=self.careamics_config, use_target=use_target
         )
         self.base_layout.addWidget(self.input_data_widget)
 
     def add_config_ui(self) -> None:
         """Add the training configuration UI to the plugin."""
         self.config_widget = ConfigurationWidget(self.careamics_config)
+        self.config_widget.enable_3d_chkbox.clicked.connect(self._set_pred_3d)
         self.base_layout.addWidget(self.config_widget)
 
     def add_train_button_ui(self) -> None:
@@ -175,10 +172,9 @@ class BasePlugin(QWidget):
     def add_prediction_ui(self) -> None:
         """Add the prediction UI to the plugin."""
         self.prediction_widget = PredictionWidget(
+            self.careamics_config,
             self.train_status,
             self.pred_status,
-            self.careamics_config,
-            self.pred_config_signal,
         )
         self.base_layout.addWidget(self.prediction_widget)
 
@@ -193,17 +189,22 @@ class BasePlugin(QWidget):
 
     def update_config(self) -> None:
         """Update the configuration from the UI."""
-        self.config_widget.update_config()
+        if self.config_widget is not None:
+            self.config_widget.update_config()
 
-    def _set_pred_3d(self, is_3d: bool) -> None:
-        """Set the 3D mode flag in the prediction signal.
+        if self.prediction_widget is not None:
+            self.prediction_widget.update_config()
+
+    def _set_pred_3d(self, state: bool) -> None:
+        """Set the 3D mode flag in the prediction widget.
 
         Parameters
         ----------
-        is_3d : bool
+        state : bool
             3D mode.
         """
-        self.pred_config_signal.is_3d = is_3d
+        if self.prediction_widget is not None:
+            self.prediction_widget.set_3d(state)
 
     def _training_state_changed(self, state: TrainingState) -> None:
         """Handle training state changes.
@@ -226,6 +227,7 @@ class BasePlugin(QWidget):
 
             # update configuration from ui
             self.update_config()
+            print(self.careamics_config)
 
             # start the training thread
             self.train_worker = train_worker(
@@ -246,6 +248,10 @@ class BasePlugin(QWidget):
             del self.careamist
             self.careamist = None
 
+        # update prediction widget
+        if self.prediction_widget is not None:
+            self.prediction_widget.update_button_from_train(state)
+
     def _prediction_state_changed(self, state: PredictionState) -> None:
         """Handle prediction state changes.
 
@@ -260,10 +266,24 @@ class BasePlugin(QWidget):
             return
 
         if state == PredictionState.PREDICTING:
-            self.pred_worker = predict_worker(
-                self.careamist, self.pred_config_signal, self._prediction_queue
-            )
+            # get the prediction data
+            data_source = self.prediction_widget.get_data_source()
+            if data_source is None:
+                ntf.show_info("Please set the prediction data first.")
+                self.pred_status.state = PredictionState.IDLE
+                self.prediction_widget.predict_button.setText("Predict")
+                return
 
+            # update configuration from ui
+            self.update_config()
+
+            # start the prediction thread
+            self.pred_worker = predict_worker(
+                self.careamist,
+                data_source,
+                self.careamics_config,
+                self._prediction_queue,
+            )
             self.pred_worker.yielded.connect(self._update_from_prediction)
             self.pred_worker.start()
 
@@ -351,9 +371,9 @@ class BasePlugin(QWidget):
 
                     # reshape the prediction to match the input axes
                     samples = reshape_prediction(
-                        samples,
-                        self.careamics_config.axes,
-                        self.pred_config_signal.is_3d
+                        samples,  # type: ignore
+                        self.careamics_config.data_config.axes,  # type: ignore
+                        self.careamics_config.is_3D,
                     )
                     self.viewer.add_image(samples, name="Prediction")
             else:
@@ -390,11 +410,8 @@ class BasePlugin(QWidget):
 
 
 if __name__ == "__main__":
-    import faulthandler
     import napari
 
-    log_file_fd = open("fault_log.txt", "a")
-    faulthandler.enable(log_file_fd)
     # create a Viewer
     viewer = napari.Viewer()
 
@@ -403,6 +420,7 @@ if __name__ == "__main__":
     base_plugin.add_train_input_ui(base_plugin.careamics_config.needs_gt)
     base_plugin.add_config_ui()
     base_plugin.add_train_button_ui()
+    base_plugin.add_prediction_ui()
     viewer.window.add_dock_widget(base_plugin)
     # add image to napari
     # viewer.add_image(data[0][0], name=data[0][1]['name'])

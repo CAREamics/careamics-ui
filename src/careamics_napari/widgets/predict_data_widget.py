@@ -1,7 +1,6 @@
 """A widget used to select a path or layer for prediction."""
 
-from typing import TYPE_CHECKING, Optional
-
+import numpy as np
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QFormLayout,
@@ -11,17 +10,15 @@ from qtpy.QtWidgets import (
 )
 from typing_extensions import Self
 
-from careamics_napari.signals import PredictionSignal
 from careamics_napari.widgets import FolderWidget, layer_choice
 
-if TYPE_CHECKING:
-    import napari
-    from napari.layers import Image
+# if TYPE_CHECKING:
+#     import napari
+#     from napari.layers import Image
 
 # at run time
 try:
     import napari
-    from napari.layers import Image
 except ImportError:
     _has_napari = False
 else:
@@ -29,53 +26,49 @@ else:
 
 
 class PredictDataWidget(QTabWidget):
-    """A widget offering to select a layer from napari or a path from disk.
-
-    Parameters
-    ----------
-    prediction_signal : PredConfigurationSignal, default=None
-        Signal to be updated with changed in widgets values.
-    """
+    """A widget offering to select a layer from napari or a path from disk."""
 
     def __init__(
         self: Self,
-        prediction_signal: Optional[PredictionSignal] = None,
     ) -> None:
-        """Initialize the widget.
-
-        Parameters
-        ----------
-        prediction_signal : PredConfigurationSignal, default=None
-            Signal to be updated with changed in widgets values.
-        """
+        """Initialize the widget."""
         super().__init__()
-
-        self.config_signal = (
-            PredictionSignal()  # type: ignore
-            if prediction_signal is None
-            else prediction_signal
-        )
 
         # QTabs
         layer_tab = QWidget()
-        layer_tab.setLayout(QVBoxLayout())
         disk_tab = QWidget()
-        disk_tab.setLayout(QVBoxLayout())
 
         # add tabs
-        self.addTab(layer_tab, "From layers")
+        _tab_idx = 0
+        if _has_napari and napari.current_viewer() is not None:
+            # tab for selecting data from napari layers
+            self.addTab(layer_tab, "From layers")
+            self.setTabToolTip(_tab_idx, "Use images from napari layers")
+            # add tab contents
+            self._set_layer_tab(layer_tab)
+            _tab_idx += 1
+        # tab for selecting data from disk
         self.addTab(disk_tab, "From disk")
-        self.setTabToolTip(0, "Use images from napari layers")
-        self.setTabToolTip(1, "Use iamges saved on the disk")
-
-        # set tabs
-        self._set_layer_tab(layer_tab)
+        self.setTabToolTip(_tab_idx, "Use patches saved on the disk")
         self._set_disk_tab(disk_tab)
 
-        # set actions
-        if self.config_signal is not None:
-            self.currentChanged.connect(self._set_data_source)
-            self._set_data_source(self.currentIndex())
+    def get_data_sources(self) -> str | np.ndarray | None:
+        """Get the selected data sources."""
+        if (
+            self.img_pred.value is None  # type: ignore
+            and len(self.pred_images_folder.get_folder()) == 0
+        ):
+            # no prediction data has been selected
+            return None
+
+        if self.currentIndex() == 0:
+            # data is expected from napari layers
+            pred_data = self.img_pred.value.data  # type: ignore
+        else:
+            # data is expected from disk
+            pred_data = self.pred_images_folder.get_folder()
+
+        return pred_data
 
     def _set_layer_tab(
         self: Self,
@@ -88,28 +81,18 @@ class PredictDataWidget(QTabWidget):
         layer_tab : QWidget
             The layer tab.
         """
-        if _has_napari and napari.current_viewer() is not None:
-            form = QFormLayout()
-            form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-            form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-            form.setContentsMargins(12, 12, 0, 0)
-            widget_layers = QWidget()
-            widget_layers.setLayout(form)
+        form = QFormLayout()
+        form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)  # type: ignore
+        form.setContentsMargins(12, 12, 0, 0)
 
-            self.img_pred = layer_choice()
-            form.addRow("Predict", self.img_pred.native)
+        self.img_pred = layer_choice()
+        self.img_pred.native.setToolTip("Select the prediction layer.")
+        form.addRow("Predict", self.img_pred.native)
 
-            layer_tab.layout().addWidget(widget_layers)
-
-            # connection actions for images
-            self.img_pred.changed.connect(self._update_pred_layer)
-            # to cover the case when image was loaded before the plugin
-            if self.img_pred.value is not None:
-                self._update_pred_layer(self.img_pred.value)
-
-        else:
-            # simply remove the tab
-            self.removeTab(0)
+        vbox = QVBoxLayout()
+        vbox.addLayout(form)
+        layer_tab.setLayout(vbox)
 
     def _set_disk_tab(self: Self, disk_tab: QWidget) -> None:
         """Set up the disk tab.
@@ -119,57 +102,18 @@ class PredictDataWidget(QTabWidget):
         disk_tab : QWidget
             The disk tab.
         """
-        # disk tab
-        buttons = QWidget()
         form = QFormLayout()
-        form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)  # type: ignore
+        form.setContentsMargins(12, 12, 0, 0)
 
         self.pred_images_folder = FolderWidget("Choose")
+        self.pred_images_folder.setToolTip("Select a folder containing images.")
         form.addRow("Predict", self.pred_images_folder)
 
-        self.pred_images_folder.setToolTip("Select a folder containing images.")
-
-        # add actions
-        self.pred_images_folder.get_text_widget().textChanged.connect(
-            self._update_pred_folder
-        )
-
-        buttons.setLayout(form)
-        disk_tab.layout().addWidget(buttons)
-
-    def _set_data_source(self: Self, index: int) -> None:
-        """Set the load_from_disk attribute of the signal based on the selected tab.
-
-        Parameters
-        ----------
-        index : int
-            Index of the selected tab.
-        """
-        if self.config_signal is not None:
-            self.config_signal.load_from_disk = index == self.count() - 1
-
-    def _update_pred_layer(self: Self, layer: Image) -> None:
-        """Update the layer attribute of the signal.
-
-        Parameters
-        ----------
-        layer : Image
-            The selected layer.
-        """
-        if self.config_signal is not None:
-            self.config_signal.layer_pred = layer
-
-    def _update_pred_folder(self: Self, folder: str) -> None:
-        """Update the path attribute of the signal.
-
-        Parameters
-        ----------
-        folder : str
-            The selected folder.
-        """
-        if self.config_signal.path_pred is not None:
-            self.config_signal.path_pred = folder
+        vbox = QVBoxLayout()
+        vbox.addLayout(form)
+        disk_tab.setLayout(vbox)
 
 
 if __name__ == "__main__":
@@ -193,14 +137,7 @@ if __name__ == "__main__":
 
     import napari
 
-    # create a Viewer
     viewer = napari.Viewer()
+    viewer.window.add_dock_widget(PredictDataWidget())
 
-    # add napari-n2v plugin
-    viewer.window.add_dock_widget(PredictDataWidget(PredictionSignal()))
-
-    # add image to napari
-    # viewer.add_image(data[0][0], name=data[0][1]['name'])
-
-    # start UI
     napari.run()

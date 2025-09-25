@@ -11,10 +11,8 @@ from qtpy.QtWidgets import (
 )
 from typing_extensions import Self
 
-from careamics_napari.widgets import FolderWidget, layer_choice
 from careamics_napari.careamics_utils import BaseConfig
-# from careamics_napari.widgets.utils import bind
-
+from careamics_napari.widgets import FolderWidget, layer_choice
 
 # if TYPE_CHECKING:
 #     import napari
@@ -89,10 +87,10 @@ class TrainDataWidget(QTabWidget):
         if self.currentIndex() == 0:
             # data is expected from napari layers
             train_data = [self.img_train.value.data]  # type: ignore
-            val_data = [self.img_val.value.data]      # type: ignore
+            val_data = [self.img_val.value.data]  # type: ignore
             if self.use_target:
                 train_data.append(self.target_train.value.data)  # type: ignore
-                val_data.append(self.target_val.value.data)      # type: ignore
+                val_data.append(self.target_val.value.data)  # type: ignore
 
         else:
             # data is expected from disk
@@ -102,10 +100,7 @@ class TrainDataWidget(QTabWidget):
                 train_data.append(self.train_target_folder.get_folder())
                 val_data.append(self.val_target_folder.get_folder())
 
-        return {
-            "train": train_data,
-            "val": val_data
-        }
+        return {"train": train_data, "val": val_data}
 
     def _set_layer_tab(self: Self, layer_tab: QWidget) -> None:
         """Set up the layer tab.
@@ -126,6 +121,9 @@ class TrainDataWidget(QTabWidget):
         self.img_val = layer_choice()
         self.img_train.native.setToolTip("Select the validation layer.")
 
+        form.addRow("Train", self.img_train.native)
+        form.addRow("Val", self.img_val.native)
+
         if self.use_target:
             # get the target layers
             self.target_train = layer_choice()
@@ -135,14 +133,8 @@ class TrainDataWidget(QTabWidget):
             self.target_train.native.setToolTip("Select a training target layer.")
             self.target_val.native.setToolTip("Select a validation target layer.")
 
-            form.addRow("Train", self.img_train.native)
-            form.addRow("Val", self.img_val.native)
             form.addRow("Train target", self.target_train.native)
             form.addRow("Val target", self.target_val.native)
-
-        else:
-            form.addRow("Train", self.img_train.native)
-            form.addRow("Val", self.img_val.native)
 
         vbox = QVBoxLayout()
         vbox.addLayout(form)
@@ -174,21 +166,21 @@ class TrainDataWidget(QTabWidget):
             form.addRow("Val target", self.val_target_folder)
 
             self.train_target_folder.setToolTip(
-                "Select a folder containing the training\n" "target."
+                "Select a folder containing the training\ntarget."
             )
             self.val_target_folder.setToolTip(
-                "Select a folder containing the validation\n" "target."
+                "Select a folder containing the validation\ntarget."
             )
             self.train_images_folder.setToolTip(
-                "Select a folder containing the training\n" "images."
+                "Select a folder containing the training\nimages."
             )
             self.val_images_folder.setToolTip(
-                "Select a folder containing the validation\n" "images."
+                "Select a folder containing the validation\nimages."
             )
 
         else:
             self.train_images_folder.setToolTip(
-                "Select a folder containing the training\n" "images."
+                "Select a folder containing the training\nimages."
             )
             self.val_images_folder.setToolTip(
                 "Select a folder containing the validation\n"
@@ -223,6 +215,7 @@ if __name__ == "__main__":
 
     # import qdarktheme
     import napari
+
     from careamics_napari.careamics_utils import get_default_n2v_config
 
     # qdarktheme.enable_hi_dpi()
@@ -231,9 +224,7 @@ if __name__ == "__main__":
     # create a Viewer
     viewer = napari.Viewer()
     # add napari-n2v plugin
-    viewer.window.add_dock_widget(
-        TrainDataWidget(config, True)
-    )
+    viewer.window.add_dock_widget(TrainDataWidget(config, True))
 
     # add image to napari
     # viewer.add_image(data[0][0], name=data[0][1]['name'])

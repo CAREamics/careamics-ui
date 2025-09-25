@@ -6,16 +6,13 @@ from queue import Queue
 from threading import Thread
 from typing import Optional
 
-import numpy as np
 import napari.utils.notifications as ntf
+import numpy as np
 from careamics import CAREamist
-from careamics.config.support import SupportedAlgorithm
 from superqt.utils import thread_worker
 
 from careamics_napari.careamics_utils import BaseConfig, UpdaterCallBack
-from careamics_napari.careamics_utils.configuration import create_configuration
 from careamics_napari.signals import (
-    TrainingSignal,
     TrainingState,
     TrainUpdate,
     TrainUpdateType,
@@ -115,7 +112,6 @@ def _train(
     careamist : CAREamist or None, default=None
         CAREamist instance.
     """
-    print("train worker:\n", configuration)
     train_data = data_sources["train"][0]
     val_data = data_sources["val"][0]
     train_target = None
@@ -135,7 +131,7 @@ def _train(
     if configuration.needs_gt and train_target is None:
         _push_exception(
             training_queue,
-            ValueError("Training target (GT) is required but wasn't provided.")
+            ValueError("Training target (GT) is required but wasn't provided."),
         )
 
     try:
@@ -143,12 +139,15 @@ def _train(
         if careamist is None:
             careamist = CAREamist(
                 configuration,
-                callbacks=[UpdaterCallBack(training_queue, predict_queue)]
+                work_dir=configuration.work_dir,
+                callbacks=[UpdaterCallBack(training_queue, predict_queue)],
             )
         else:
             # only update the number of epochs
-            careamist.cfg.training_config.num_epochs = \
-            configuration.training_config.lightning_trainer_config["max_epochs"]
+            if configuration.training_config.lightning_trainer_config:
+                careamist.cfg.training_config.num_epochs = (  # type: ignore
+                    configuration.training_config.lightning_trainer_config["max_epochs"]
+                )
             if val_data is None:
                 ntf.show_error(
                     "Continuing training is currently not supported without explicitely "

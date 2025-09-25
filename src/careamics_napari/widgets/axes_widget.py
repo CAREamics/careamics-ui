@@ -3,11 +3,11 @@
 from enum import Enum
 from typing import Any
 
+from careamics.config.architectures import UNetModel
 from qtpy import QtGui
 from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
 from typing_extensions import Self
 
-from careamics.config.architectures import UNetModel
 from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.utils import REF_AXES, are_axes_valid
 from careamics_napari.widgets.utils import bind
@@ -113,7 +113,7 @@ class AxesWidget(QWidget):
 
         # text field
         self.label = QLabel("Axes")
-        self.text_field = QLineEdit(careamics_config.data_config.axes)
+        self.text_field = QLineEdit(careamics_config.data_config.axes)  # type: ignore
         self.text_field.setMaxLength(6)
         self.text_field.setValidator(LettersValidator(REF_AXES))
         self.text_field.textChanged.connect(self._validate_axes)  # type: ignore
@@ -135,14 +135,14 @@ class AxesWidget(QWidget):
         type(self).axes = bind(
             self.text_field,
             "text",
-            default_value=self.configuration.data_config.axes,
+            default_value=self.configuration.data_config.axes,  # type: ignore
             validation_fn=self._validate_axes,
         )
 
     def update_config(self: Self) -> None:
         """Update the axes in the configuration if it's valid."""
         if self.is_text_valid:
-            self.configuration.data_config.axes = self.axes
+            self.configuration.data_config.axes = self.axes  # type: ignore
             if isinstance(self.configuration.algorithm_config.model, UNetModel):
                 self.configuration.algorithm_config.model.independent_channels = (
                     "C" in self.axes
@@ -185,7 +185,9 @@ class AxesWidget(QWidget):
 
 if __name__ == "__main__":
     import sys
+
     from qtpy.QtWidgets import QApplication, QPushButton
+
     from careamics_napari.careamics_utils import get_default_n2v_config
 
     config = get_default_n2v_config()

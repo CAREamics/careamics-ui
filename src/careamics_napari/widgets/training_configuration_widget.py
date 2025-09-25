@@ -11,6 +11,7 @@ from qtpy.QtWidgets import (
 )
 from typing_extensions import Self
 
+from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.resources import ICON_GEAR
 from careamics_napari.widgets import (
     # AdvancedConfigurationWindow,
@@ -19,7 +20,6 @@ from careamics_napari.widgets import (
     create_int_spinbox,
 )
 from careamics_napari.widgets.utils import bind
-from careamics_napari.careamics_utils import BaseConfig
 
 
 class ConfigurationWidget(QGroupBox):
@@ -65,9 +65,7 @@ class ConfigurationWidget(QGroupBox):
 
         # number of epochs
         # self.configuration.training_config.lightning_trainer_config["max_epochs"]
-        self.n_epochs_spin = create_int_spinbox(
-            1, 1000, 30, tooltip="Number of epochs"
-        )
+        self.n_epochs_spin = create_int_spinbox(1, 1000, 30, tooltip="Number of epochs")
 
         # batch size
         self.batch_size_spin = create_int_spinbox(1, 512, 16, 1)
@@ -76,12 +74,12 @@ class ConfigurationWidget(QGroupBox):
         )
 
         # patch size XY
-        self.patch_XY_spin = PowerOfTwoSpinBox(16, 512, 64)
-        self.patch_XY_spin.setToolTip("Dimension of the patches in XY.")
+        self.patch_xy_spin = PowerOfTwoSpinBox(16, 512, 64)
+        self.patch_xy_spin.setToolTip("Dimension of the patches in XY.")
         # patch size Z
-        self.patch_Z_spin = PowerOfTwoSpinBox(8, 512, 8)
-        self.patch_Z_spin.setToolTip("Dimension of the patches in Z.")
-        self.patch_Z_spin.setEnabled(self.configuration.is_3D)
+        self.patch_z_spin = PowerOfTwoSpinBox(8, 512, 8)
+        self.patch_z_spin.setToolTip("Dimension of the patches in Z.")
+        self.patch_z_spin.setEnabled(self.configuration.is_3D)
 
         # layout
         formLayout = QFormLayout()
@@ -92,15 +90,15 @@ class ConfigurationWidget(QGroupBox):
         formLayout.addRow(self.axes_widget.label.text(), self.axes_widget.text_field)
         formLayout.addRow("N epochs", self.n_epochs_spin)
         formLayout.addRow("Batch size", self.batch_size_spin)
-        formLayout.addRow("Patch XY", self.patch_XY_spin)
-        formLayout.addRow("Patch Z", self.patch_Z_spin)
+        formLayout.addRow("Patch XY", self.patch_xy_spin)
+        formLayout.addRow("Patch Z", self.patch_z_spin)
         formLayout.minimumSize()
 
         hlayout = QVBoxLayout()
         hlayout.setContentsMargins(5, 20, 5, 10)
         hlayout.addWidget(
             self.training_expert_btn,
-            alignment=Qt.AlignRight | Qt.AlignVCenter  # type: ignore
+            alignment=Qt.AlignRight | Qt.AlignVCenter,  # type: ignore
         )
         hlayout.addLayout(formLayout)
         self.setLayout(hlayout)
@@ -109,26 +107,28 @@ class ConfigurationWidget(QGroupBox):
         self._bind_properties()
 
     def update_config(self) -> None:
-        """Update the configuration from the UI."""
+        """Update the configuration from the UI element."""
         # update config axes (from axes widget)
         self.axes_widget.update_config()
         # is 3D
         self.configuration.is_3D = self.is_3D
         # num epochs
-        self.configuration.training_config.lightning_trainer_config["max_epochs"] = self.num_epochs
+        self.configuration.training_config.lightning_trainer_config["max_epochs"] = (
+            self.num_epochs
+        )
         # batch size
         self.configuration.data_config.batch_size = self.batch_size
         # patch size
-        patch_size = [self.patch_XY_size, self.patch_XY_size]
+        _patch_size = [self.patch_xy_size, self.patch_xy_size]
         if self.is_3D:
-            patch_size.insert(0, self.patch_Z_size)
-        self.configuration.data_config.patch_size = patch_size
+            _patch_size.insert(0, self.patch_z_size)
+        self.configuration.data_config.patch_size = _patch_size
         self.configuration.set_3D(
-            self.is_3D, self.configuration.data_config.axes, patch_size
+            self.is_3D, self.configuration.data_config.axes, _patch_size
         )  # maybe not necessary, but let's have it to be sure.
         print("config widget:\n", self.configuration)
 
-    def _enable_3d_changed(self: Self, state: bool) -> None:
+    def _enable_3d_changed(self, state: bool) -> None:
         """Update the signal 3D state.
 
         Parameters
@@ -136,7 +136,7 @@ class ConfigurationWidget(QGroupBox):
         state : bool
             3D state.
         """
-        self.patch_Z_spin.setEnabled(state)
+        self.patch_z_spin.setEnabled(state)
 
     def _bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""
@@ -146,22 +146,25 @@ class ConfigurationWidget(QGroupBox):
         )
         # number of epochs
         type(self).num_epochs = bind(
-            self.n_epochs_spin, "value",
-            self.configuration.training_config.lightning_trainer_config["max_epochs"]
+            self.n_epochs_spin,
+            "value",
+            self.configuration.training_config.lightning_trainer_config["max_epochs"],
         )
         # batch size
         type(self).batch_size = bind(
             self.batch_size_spin, "value", self.configuration.data_config.batch_size
         )
         # XY patch size
-        type(self).patch_XY_size = bind(
-            self.patch_XY_spin, "value", self.configuration.data_config.patch_size[-2:]
+        type(self).patch_xy_size = bind(
+            self.patch_xy_spin, "value", self.configuration.data_config.patch_size[-2:]
         )
         # Z patch size
-        type(self).patch_Z_size = bind(
-            self.patch_Z_spin, "value",
+        type(self).patch_z_size = bind(
+            self.patch_z_spin,
+            "value",
             self.configuration.data_config.patch_size[0]
-            if self.configuration.is_3D else None
+            if self.configuration.is_3D
+            else None,
         )
 
     # def _show_configuration_window(self: Self) -> None:
@@ -176,7 +179,9 @@ class ConfigurationWidget(QGroupBox):
 
 if __name__ == "__main__":
     import sys
+
     from qtpy.QtWidgets import QApplication
+
     from careamics_napari.careamics_utils import get_default_n2v_config
 
     config = get_default_n2v_config()
