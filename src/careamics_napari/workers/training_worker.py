@@ -4,7 +4,6 @@ import traceback
 from collections.abc import Generator
 from queue import Queue
 from threading import Thread
-from typing import Optional
 
 import napari.utils.notifications as ntf
 import numpy as np
@@ -27,7 +26,7 @@ def train_worker(
     data_sources: dict[str, list],
     training_queue: Queue,
     predict_queue: Queue,
-    careamist: Optional[CAREamist] = None,
+    careamist: CAREamist | None = None,
 ) -> Generator[TrainUpdate, None, None]:
     """Model training worker.
 
@@ -95,7 +94,7 @@ def _train(
     data_sources: dict[str, list],
     training_queue: Queue,
     predict_queue: Queue,
-    careamist: Optional[CAREamist] = None,
+    careamist: CAREamist | None = None,
 ) -> None:
     """Run the training.
 

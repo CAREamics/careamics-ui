@@ -9,7 +9,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QVBoxLayout,
 )
-from typing_extensions import Self
 
 from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.resources import ICON_GEAR
@@ -31,7 +30,7 @@ class ConfigurationWidget(QGroupBox):
         careamics configuration object.
     """
 
-    def __init__(self: Self, careamics_config: BaseConfig) -> None:
+    def __init__(self, careamics_config: BaseConfig) -> None:
         """Initialize the widget.
 
         Parameters

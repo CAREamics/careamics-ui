@@ -7,7 +7,6 @@ from careamics import CAREamist
 # from careamics.config.support import SupportedAlgorithm
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QVBoxLayout, QWidget
-from typing_extensions import Self
 
 from careamics_napari.careamics_utils import get_default_n2v_config
 from careamics_napari.signals import (
@@ -80,7 +79,7 @@ class BasePlugin(QWidget):
     """
 
     def __init__(
-        self: Self,
+        self,
         napari_viewer: napari.Viewer | None = None,
     ) -> None:
         """Initialize the plugin.
@@ -103,10 +102,7 @@ class BasePlugin(QWidget):
         self.careamics_config = get_default_n2v_config()
 
         # create signals, used to hold the various parameters modified by the UI
-        # self.pred_config_signal = PredictionSignal()
         self.save_config_signal = SavingSignal()
-        # make sure that the prediction 3D mode is the same as the training one
-        # self.train_config_signal.events.is_3d.connect(self._set_pred_3d)
 
         # create queues, used to communicate between the threads and the UI
         self._training_queue: Queue = Queue(10)
@@ -175,8 +171,11 @@ class BasePlugin(QWidget):
             self.careamics_config,
             self.train_status,
             self.pred_status,
+            self._prediction_queue,
         )
         self.base_layout.addWidget(self.prediction_widget)
+        # to get loaded careamist
+        self.prediction_widget.careamist_loaded.connect(self._on_careamist_loaded)
 
     def add_model_saving_ui(self) -> None:
         """Add the model saving UI to the plugin."""
@@ -227,7 +226,6 @@ class BasePlugin(QWidget):
 
             # update configuration from ui
             self.update_config()
-            print(self.careamics_config)
 
             # start the training thread
             self.train_worker = train_worker(
@@ -295,6 +293,14 @@ class BasePlugin(QWidget):
                 self._prediction_queue.put(
                     PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
                 )
+
+    def _on_careamist_loaded(self, careamist: CAREamist) -> None:
+        """Callback when a CAREamics instance has been loaded."""
+        self.careamist = careamist
+        print(
+            f"CAREamics instance loaded: "
+            f"{self.careamist.cfg.get_algorithm_friendly_name()}"
+        )
 
     def _saving_state_changed(self, state: SavingState) -> None:
         """Handle saving state changes.

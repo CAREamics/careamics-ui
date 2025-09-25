@@ -1,18 +1,24 @@
 """Widget used to run prediction from the Training plugin."""
 
+from queue import Queue
+
+import napari.utils.notifications as ntf
 import numpy as np
-from qtpy.QtCore import Qt
+from careamics import CAREamist
+from qtpy.QtCore import Qt, Signal
 from qtpy.QtWidgets import (
     QCheckBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QLineEdit,
     QPushButton,
+    QRadioButton,
     QVBoxLayout,
 )
-from typing_extensions import Self
 
-from careamics_napari.careamics_utils import BaseConfig
+from careamics_napari.careamics_utils import BaseConfig, UpdaterCallBack
 from careamics_napari.signals import (
     PredictionState,
     PredictionStatus,
@@ -33,35 +39,37 @@ class PredictionWidget(QGroupBox):
 
     Parameters
     ----------
+    careamics_config : BaseConfig
+            The configuration for the CAREamics algorithm.
     train_status : TrainingStatus or None, default=None
         The training status signal.
     pred_status : PredictionStatus or None, default=None
         The prediction status signal.
-    train_signal : TrainingSignal or None, default=None
-        The training configuration signal.
-    pred_signal : PredictionSignal or None, default=None
-        The prediction configuration signal.
     """
 
+    # set a signal to send a careamist object
+    # when it's loaded from disk.
+    careamist_loaded = Signal(CAREamist)
+
     def __init__(
-        self: Self,
+        self,
         careamics_config: BaseConfig,
         train_status: TrainingStatus | None = None,
         pred_status: PredictionStatus | None = None,
-        # pred_signal: Optional[PredictionSignal] = None,
+        prediction_queue: Queue | None = None,
     ) -> None:
         """Initialize the widget.
 
         Parameters
         ----------
+        careamics_config : BaseConfig
+            The configuration for the CAREamics algorithm.
         train_status : TrainingStatus or None, default=None
             The training status signal.
         pred_status : PredictionStatus or None, default=None
             The prediction status signal.
-        train_signal : TrainingSignal or None, default=None
-            The training configuration signal.
-        pred_signal : PredictionSignal or None, default=None
-            The prediction configuration signal.
+        prediction_queue : Queue or None, default=None
+            The prediction queue.
         """
         super().__init__()
 
@@ -72,8 +80,21 @@ class PredictionWidget(QGroupBox):
         self.pred_status = (
             PredictionStatus() if pred_status is None else pred_status  # type: ignore
         )
+        self.prediction_queue = (
+            Queue(10) if prediction_queue is None else prediction_queue
+        )
 
         self.setTitle("Prediction")
+
+        # model selection
+        self.from_train_radiobutton = QRadioButton("From the trained model")
+        self.from_train_radiobutton.setChecked(True)
+        self.from_disk_radiobutton = QRadioButton("Load model from disk")
+        self.model_textbox = QLineEdit()
+        self.model_textbox.setReadOnly(True)
+        self.model_textbox.setEnabled(False)
+        self.load_button = QPushButton("Load...")
+        self.load_button.setEnabled(False)
 
         # data selection
         self.predict_data_widget = PredictDataWidget()
@@ -120,6 +141,14 @@ class PredictionWidget(QGroupBox):
 
         # layout
         vbox = QVBoxLayout()
+        model_vbox = QVBoxLayout()
+        model_vbox.addWidget(self.from_train_radiobutton)
+        model_vbox.addWidget(self.from_disk_radiobutton)
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.model_textbox)
+        hbox.addWidget(self.load_button)
+        model_vbox.addLayout(hbox)
+        vbox.addLayout(model_vbox)
         vbox.addWidget(self.predict_data_widget)
         vbox.addWidget(self.tiling_cbox)
         tiling_form = QFormLayout()
@@ -139,6 +168,9 @@ class PredictionWidget(QGroupBox):
         self.setLayout(vbox)
 
         # actions
+        self.from_train_radiobutton.clicked.connect(self._model_selection_changed)
+        self.from_disk_radiobutton.clicked.connect(self._model_selection_changed)
+        self.load_button.clicked.connect(self._select_model_checkpoint)
         self.tiling_cbox.clicked.connect(self._update_tilings)
         self.predict_button.clicked.connect(self._predict_button_clicked)
         self.stop_button.clicked.connect(self._stop_button_clicked)
@@ -150,7 +182,7 @@ class PredictionWidget(QGroupBox):
         # bind properties
         self._bind_properties()
 
-    def set_3d(self: Self, state: bool) -> None:
+    def set_3d(self, state: bool) -> None:
         """Enable the z tile size spinbox if the data is 3D.
 
         Parameters
@@ -162,7 +194,7 @@ class PredictionWidget(QGroupBox):
         self.configuration.is_3D = state
         self.tile_size_z_spin.setEnabled(self.do_tiling and state)
 
-    def update_button_from_train(self: Self, state: TrainingState) -> None:
+    def update_button_from_train(self, state: TrainingState) -> None:
         """Update the predict button based on the training state.
 
         Parameters
@@ -203,7 +235,67 @@ class PredictionWidget(QGroupBox):
         # batch size
         type(self).batch_size = bind(self.batch_size_spin, "value", 1)
 
-    def _update_tilings(self: Self, state: bool) -> None:
+    def _model_selection_changed(self) -> None:
+        """Update model selection ui."""
+        load_from_disk = self.from_disk_radiobutton.isChecked()
+        self.model_textbox.setEnabled(load_from_disk)
+        self.load_button.setEnabled(load_from_disk)
+
+    def _select_model_checkpoint(self) -> None:
+        """Load a selected CAREamics model."""
+        selected_file, _filter = QFileDialog.getOpenFileName(
+            self, "CAREamics", ".", "CAREamics Model(*.ckpt *.zip)"
+        )
+        if selected_file is not None and len(selected_file) > 0:
+            careamist = self._load_model(selected_file)
+            if careamist is None:
+                ntf.show_error(f"Error loading the model: {selected_file}")
+                return
+            # sent the careamist to the parent window / plugin
+            self.careamist_loaded.emit(careamist)
+            self.model_textbox.setText(selected_file)
+            self.predict_button.setEnabled(True)
+
+    def _load_model(self, model_path: str) -> CAREamist | None:
+        """Load a CAREamics model.
+
+        Parameters
+        ----------
+        model_path : str
+            Path to the model checkpoint.
+
+        Returns
+        -------
+        careamist : CAREamist or None
+            CAREamist instance or None if the model could not be loaded.
+        """
+        try:
+            # carefully load the model among the mist: careamist!
+            careamist = CAREamist(
+                model_path,
+                work_dir=self.configuration.work_dir,
+                callbacks=[UpdaterCallBack(self.prediction_queue)],
+            )
+            # training is already done!
+            # self.train_status.state = TrainingState.DONE
+
+            # check the loaded model algorithm
+            # to be compatible with the current configuration
+            model_algo = careamist.cfg.get_algorithm_friendly_name()
+            config_algo = self.configuration.get_algorithm_friendly_name()
+            if model_algo != config_algo:
+                raise ValueError(
+                    f"The loaded model ({model_algo}) does not match "
+                    f"the current configuration ({config_algo})."
+                )
+
+            return careamist
+
+        except Exception as e:
+            print(f"Error loading the model:\n{e}")
+            return None
+
+    def _update_tilings(self, state: bool) -> None:
         """Update the widgets and the signal tiling parameter.
 
         Parameters
@@ -216,7 +308,7 @@ class PredictionWidget(QGroupBox):
         self.batch_size_spin.setEnabled(state)
         self.tile_size_z_spin.setEnabled(state and self.configuration.is_3D)
 
-    def _update_3d_tiles(self: Self, state: bool) -> None:
+    def _update_3d_tiles(self, state: bool) -> None:
         """Enable the z tile size spinbox if the data is 3D and tiled.
 
         Parameters
@@ -227,7 +319,7 @@ class PredictionWidget(QGroupBox):
         if self.pred_signal.tiled:
             self.tile_size_z_spin.setEnabled(state)
 
-    def _update_max_sample(self: Self, max_sample: int) -> None:
+    def _update_max_sample(self, max_sample: int) -> None:
         """Update the maximum value of the progress bar.
 
         Parameters
@@ -237,7 +329,7 @@ class PredictionWidget(QGroupBox):
         """
         self.pb_prediction.setMaximum(max_sample)
 
-    def _update_sample_idx(self: Self, sample: int) -> None:
+    def _update_sample_idx(self, sample: int) -> None:
         """Update the value of the progress bar.
 
         Parameters
@@ -250,7 +342,7 @@ class PredictionWidget(QGroupBox):
             f"Sample {sample + 1}/{self.pred_status.max_samples}"
         )
 
-    def _predict_button_clicked(self: Self) -> None:
+    def _predict_button_clicked(self) -> None:
         """Run the prediction on the images."""
         if self.pred_status is not None:
             if (
@@ -262,13 +354,13 @@ class PredictionWidget(QGroupBox):
                 self.stop_button.setEnabled(True)
                 self.pred_status.state = PredictionState.PREDICTING
 
-    def _stop_button_clicked(self: Self) -> None:
+    def _stop_button_clicked(self) -> None:
         """Stop the prediction."""
         if self.pred_status.state == PredictionState.PREDICTING:
             self.stop_button.setEnabled(False)
             self.pred_status.state = PredictionState.STOPPED
 
-    def _update_button_from_pred(self: Self, state: PredictionState) -> None:
+    def _update_button_from_pred(self, state: PredictionState) -> None:
         """Update the predict button based on the prediction state.
 
         Parameters

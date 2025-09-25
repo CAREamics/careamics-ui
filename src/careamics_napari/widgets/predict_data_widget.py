@@ -8,7 +8,6 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from typing_extensions import Self
 
 from careamics_napari.widgets import FolderWidget, layer_choice
 
@@ -28,9 +27,7 @@ else:
 class PredictDataWidget(QTabWidget):
     """A widget offering to select a layer from napari or a path from disk."""
 
-    def __init__(
-        self: Self,
-    ) -> None:
+    def __init__(self) -> None:
         """Initialize the widget."""
         super().__init__()
 
@@ -71,7 +68,7 @@ class PredictDataWidget(QTabWidget):
         return pred_data
 
     def _set_layer_tab(
-        self: Self,
+        self,
         layer_tab: QWidget,
     ) -> None:
         """Set up the layer tab.
@@ -94,7 +91,7 @@ class PredictDataWidget(QTabWidget):
         vbox.addLayout(form)
         layer_tab.setLayout(vbox)
 
-    def _set_disk_tab(self: Self, disk_tab: QWidget) -> None:
+    def _set_disk_tab(self, disk_tab: QWidget) -> None:
         """Set up the disk tab.
 
         Parameters

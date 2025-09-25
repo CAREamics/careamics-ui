@@ -9,7 +9,6 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from typing_extensions import Self
 
 from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.widgets import FolderWidget, layer_choice
@@ -40,7 +39,7 @@ class TrainDataWidget(QTabWidget):
     """
 
     def __init__(
-        self: Self,
+        self,
         careamics_config: BaseConfig,
         use_target: bool = False,
     ) -> None:
@@ -102,7 +101,7 @@ class TrainDataWidget(QTabWidget):
 
         return {"train": train_data, "val": val_data}
 
-    def _set_layer_tab(self: Self, layer_tab: QWidget) -> None:
+    def _set_layer_tab(self, layer_tab: QWidget) -> None:
         """Set up the layer tab.
 
         Parameters
@@ -140,7 +139,7 @@ class TrainDataWidget(QTabWidget):
         vbox.addLayout(form)
         layer_tab.setLayout(vbox)
 
-    def _set_disk_tab(self: Self, disk_tab: QWidget) -> None:
+    def _set_disk_tab(self, disk_tab: QWidget) -> None:
         """Set up the disk tab.
 
         Parameters

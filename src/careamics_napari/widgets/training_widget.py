@@ -1,7 +1,5 @@
 """Training widget."""
 
-from typing import Optional
-
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QGroupBox,
@@ -9,7 +7,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QVBoxLayout,
 )
-from typing_extensions import Self
 
 from careamics_napari.signals import TrainingState, TrainingStatus
 
@@ -23,7 +20,7 @@ class TrainingWidget(QGroupBox):
         Training status.
     """
 
-    def __init__(self: Self, train_status: Optional[TrainingStatus] = None) -> None:
+    def __init__(self, train_status: TrainingStatus | None = None) -> None:
         """Initialize the widget.
 
         Parameters
