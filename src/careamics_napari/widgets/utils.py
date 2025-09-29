@@ -1,50 +1,15 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from qtpy.QtWidgets import QWidget
-
-# from careamics_napari.careamics_utils import BaseConfig
-
-
-# def deep_getattr(obj, attr):
-#     return functools.reduce(getattr, attr.split('.'), obj)
-
-
-# def deep_setattr(obj, attr, value):
-#     attr_list = attr.split('.')
-#     last_obj = deep_getattr(obj, '.'.join(attr_list[:-1]))
-#     setattr(last_obj, attr_list[-1], value)
-
-
-# def bind(
-#     widget: QWidget,
-#     prop_name: str,
-#     config: BaseConfig,
-#     config_param: str,
-#     validation_fn: Callable | None = None
-# ):
-#     def getter(self):
-#         ui_value = widget.property(prop_name)
-#         old_value = deep_getattr(config, config_param)
-#         new_value = ui_value
-#         if validation_fn:
-#             if not validation_fn(new_value):
-#                 new_value = old_value
-
-#         deep_setattr(config, config_param, new_value)
-#         return new_value
-
-#     def setter(self, value):
-#         widget.setProperty(prop_name, value)
-
-#     return property(fget=getter, fset=setter)
 
 
 def bind(
     widget: QWidget,
     prop_name: str,
     default_value: Any | None = None,
-    validation_fn: Callable | None = None
-):
+    validation_fn: Callable | None = None,
+) -> property:
     """Returns a property binding to the given widget property.
 
     Parameters
@@ -63,6 +28,7 @@ def bind(
     -------
         property: A property
     """
+
     def getter(self):
         ui_value = widget.property(prop_name)
         if validation_fn:
@@ -80,14 +46,17 @@ def bind(
 
 if __name__ == "__main__":
     import sys
-    from qtpy.QtWidgets import QApplication, QVBoxLayout, QLineEdit, QPushButton
+
+    from qtpy.QtWidgets import QApplication, QLineEdit, QPushButton, QVBoxLayout
+
     from careamics_napari.careamics_utils import get_default_n2v_config
     from careamics_napari.utils import are_axes_valid
 
     config = get_default_n2v_config()
 
     class Win(QWidget):
-        """docstring for Win"""""
+        """docstring for Win""" ""
+
         def __init__(self):
             super().__init__()
             line_edit = QLineEdit()
@@ -100,11 +69,12 @@ if __name__ == "__main__":
             self.setLayout(vbox)
 
             type(self).axes = bind(
-                line_edit, "text",
-                default_value=config.data_config.axes,
-                validation_fn=are_axes_valid
+                line_edit,
+                "text",
+                default_value=config.data_config.axes,  # type: ignore
+                validation_fn=are_axes_valid,
             )
-            self.axes = config.data_config.axes
+            self.axes = config.data_config.axes  # type: ignore
 
     app = QApplication([])
     win = Win()

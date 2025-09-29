@@ -1,5 +1,7 @@
 """A widget used to select a path or layer for prediction."""
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
@@ -11,9 +13,8 @@ from qtpy.QtWidgets import (
 
 from careamics_napari.widgets import FolderWidget, layer_choice
 
-# if TYPE_CHECKING:
-#     import napari
-#     from napari.layers import Image
+if TYPE_CHECKING:
+    import napari
 
 # at run time
 try:

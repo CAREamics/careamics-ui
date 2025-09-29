@@ -12,7 +12,6 @@ from qtpy.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
 from typing_extensions import Self
 
 from careamics_napari.resources import ICON_TF
-from careamics_napari.signals import TrainingSignal
 
 
 # TODO why is it a magicgui container and not just a widget?
@@ -29,8 +28,6 @@ class TBPlotWidget(Container):
         Maximum width of the widget.
     max_height : int or None, default=None
         Maximum height of the widget.
-    train_signal : TrainingSignal or None, default=None
-        Signal containing training parameters.
     """
 
     # TODO what is this method used for?
@@ -53,7 +50,6 @@ class TBPlotWidget(Container):
         max_width: int | None = None,
         max_height: int | None = None,
         work_dir: Path | None = None,
-        # train_signal: Optional[TrainingSignal] = None,
     ):
         """Initialize the widget.
 
@@ -67,8 +63,6 @@ class TBPlotWidget(Container):
             Maximum width of the widget.
         max_height : int or None, default=None
             Maximum height of the widget.
-        train_signal : TrainingSignal or None, default=None
-            Signal containing training parameters.
         """
         super().__init__()
 

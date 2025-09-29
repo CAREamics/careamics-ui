@@ -1,9 +1,8 @@
 from pathlib import Path
 
-from careamics.config import Configuration, create_n2v_configuration
+from careamics.config import Configuration
 from careamics.utils import get_careamics_home
-
-from careamics_napari.utils import get_num_workers
+from pydantic import BaseModel
 
 HOME = get_careamics_home()
 
@@ -23,6 +22,7 @@ class BaseConfig(Configuration):
     work_dir: Path = HOME
     """Directory where the checkpoints and logs are saved."""
 
+    # training parameters
     val_percentage: float = 0.1
     """Percentage of the training data used for validation."""
 
@@ -30,7 +30,7 @@ class BaseConfig(Configuration):
     """Minimum number of patches or images in the validation set."""
 
     # prediction parameters
-    tile_size: tuple[int, int] | None = None
+    tile_size: tuple[int, int] | tuple[int, int, int] | None = None
     """Size of the tiles to predict on."""
 
     tile_overlap_xy: int = 48
@@ -43,25 +43,14 @@ class BaseConfig(Configuration):
     """Batch size for prediction."""
 
 
-def get_default_n2v_config() -> BaseConfig:
-    """Return default N2V configuration."""
-    num_workers = get_num_workers()
+class AdvancedConfig(BaseModel):
+    """Advanced configuration class."""
 
-    config = create_n2v_configuration(
-        experiment_name="careamics",
-        data_type="array",
-        axes="YX",
-        patch_size=[64, 64],
-        batch_size=16,
-        num_epochs=30,
-        train_dataloader_params={"num_workers": num_workers},
-        val_dataloader_params={"num_workers": num_workers},
-    )
-    config = BaseConfig(**config.model_dump(), needs_gt=False)
+    x_flip: bool = True
+    """Whether to apply flipping along the X dimension during augmentation."""
 
-    return config
+    y_flip: bool = True
+    """Whether to apply flipping along the Y dimension during augmentation."""
 
-
-if __name__ == "__main__":
-    config = get_default_n2v_config()
-    print(config)
+    rotations: bool = True
+    """Whether to apply rotations during augmentation."""

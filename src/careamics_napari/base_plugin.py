@@ -1,24 +1,20 @@
+import traceback
 from collections import deque
+from pathlib import Path
 from queue import Queue
 
 import numpy as np
 from careamics import CAREamist
-
-# from careamics.config.support import SupportedAlgorithm
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QVBoxLayout, QWidget
 
 from careamics_napari.careamics_utils import get_default_n2v_config
 from careamics_napari.signals import (
+    ExportType,
     PredictionState,
     PredictionStatus,
     PredictionUpdate,
     PredictionUpdateType,
-    SavingSignal,
-    SavingState,
-    SavingStatus,
-    SavingUpdate,
-    SavingUpdateType,
     TrainingState,
     TrainingStatus,
     TrainUpdate,
@@ -36,37 +32,15 @@ from careamics_napari.widgets import (
     TrainProgressWidget,
     create_gpu_label,
 )
-from careamics_napari.workers import predict_worker, save_worker, train_worker
+from careamics_napari.workers import predict_worker, train_worker
 
-# if TYPE_CHECKING:
-#     import napari
-
-# at run time
 try:
     import napari
     import napari.utils.notifications as ntf
-
 except ImportError:
     _has_napari = False
 else:
     _has_napari = True
-
-
-# class ScrollPluginWrapper(ScrollWidgetWrapper):
-#     """Wrap a plugin widget within a scrolling wrapper."""
-
-#     def __init__(
-#         self: Self,
-#         plugin: QWidget,
-#     ) -> None:
-#         """Initialize the plugin.
-
-#         Parameters
-#         ----------
-#         plugin : QWidget
-#             Plugin widget to wrap.
-#         """
-#         super().__init__(plugin)
 
 
 class BasePlugin(QWidget):
@@ -96,13 +70,9 @@ class BasePlugin(QWidget):
         # create statuses, used to keep track of the threads statuses
         self.train_status = TrainingStatus()  # type: ignore
         self.pred_status = PredictionStatus()  # type: ignore
-        self.save_status = SavingStatus()  # type: ignore
 
         # create a careamics config (n2v by default)
         self.careamics_config = get_default_n2v_config()
-
-        # create signals, used to hold the various parameters modified by the UI
-        self.save_config_signal = SavingSignal()
 
         # create queues, used to communicate between the threads and the UI
         self._training_queue: Queue = Queue(10)
@@ -111,7 +81,6 @@ class BasePlugin(QWidget):
         # changes from the training, prediction or saving state
         self.train_status.events.state.connect(self._training_state_changed)
         self.pred_status.events.state.connect(self._prediction_state_changed)
-        self.save_status.events.state.connect(self._saving_state_changed)
 
         # main layout
         self.base_layout = QVBoxLayout()
@@ -154,6 +123,7 @@ class BasePlugin(QWidget):
         """Add the training configuration UI to the plugin."""
         self.config_widget = ConfigurationWidget(self.careamics_config)
         self.config_widget.enable_3d_chkbox.clicked.connect(self._set_pred_3d)
+        self.config_widget.show_advanced_config.connect(self.show_advanced_config)
         self.base_layout.addWidget(self.config_widget)
 
     def add_train_button_ui(self) -> None:
@@ -177,13 +147,13 @@ class BasePlugin(QWidget):
         # to get loaded careamist
         self.prediction_widget.careamist_loaded.connect(self._on_careamist_loaded)
 
-    def add_model_saving_ui(self) -> None:
+    def add_model_export_ui(self) -> None:
         """Add the model saving UI to the plugin."""
         self.saving_widget = SavingWidget(
-            train_status=self.train_status,
-            save_status=self.save_status,
-            save_signal=self.save_config_signal,
+            self.careamics_config,
+            self.train_status,
         )
+        self.saving_widget.export_model.connect(self.export_model)
         self.base_layout.addWidget(self.saving_widget)
 
     def update_config(self) -> None:
@@ -193,6 +163,40 @@ class BasePlugin(QWidget):
 
         if self.prediction_widget is not None:
             self.prediction_widget.update_config()
+
+        print(f"update_config:\n{self.careamics_config}")
+
+    def export_model(self, destination: Path, export_type: str) -> None:
+        """Export the trained model."""
+        if self.careamist is None:
+            if _has_napari:
+                ntf.show_info("No trained model is available for exporting.")
+            return
+
+        dims = "3D" if self.careamics_config.is_3D else "2D"
+        algo_name = self.careamics_config.algorithm_config.get_algorithm_friendly_name()
+        name = f"{algo_name}_{dims}_{self.careamics_config.experiment_name}"
+
+        try:
+            if export_type == ExportType.BMZ:
+                raise NotImplementedError("Export to BMZ not implemented yet (but soon).")
+            else:
+                name = name + ".ckpt"
+                self.careamist.trainer.save_checkpoint(
+                    destination.joinpath(name),
+                )
+                print(f"Model exported at {destination}")
+                if _has_napari:
+                    ntf.show_info(f"Model exported at {destination}")
+
+        except Exception as e:
+            traceback.print_exc()
+            if _has_napari:
+                ntf.show_error(str(e))
+
+    def show_advanced_config(self):
+        """Show advanced configuration options."""
+        raise NotImplementedError("Advanced configuration options are not implemented.")
 
     def _set_pred_3d(self, state: bool) -> None:
         """Set the 3D mode flag in the prediction widget.
@@ -226,10 +230,25 @@ class BasePlugin(QWidget):
 
             # update configuration from ui
             self.update_config()
+            print(self.careamics_config)
+
+            # cfg = create_n2v_configuration(
+            #     experiment_name="careamics",
+            #     data_type="array",
+            #     axes="YX",
+            #     patch_size=[64, 64],
+            #     batch_size=16,
+            #     num_epochs=5,
+            #     independent_channels=True,
+            #     train_dataloader_params={"num_workers": 0},
+            #     val_dataloader_params={"num_workers": 0},
+            # )
 
             # start the training thread
             self.train_worker = train_worker(
                 self.careamics_config,
+                # get_default_n2v_config(),
+                # cfg,
                 data_sources,
                 self._training_queue,
                 self._prediction_queue,
@@ -302,21 +321,6 @@ class BasePlugin(QWidget):
             f"{self.careamist.cfg.get_algorithm_friendly_name()}"
         )
 
-    def _saving_state_changed(self, state: SavingState) -> None:
-        """Handle saving state changes.
-
-        Parameters
-        ----------
-        state : SavingState
-            New state.
-        """
-        if state == SavingState.SAVING and self.careamist is not None:
-            self.save_worker = save_worker(
-                self.careamist, self.careamics_config, self.save_config_signal
-            )
-            self.save_worker.yielded.connect(self._update_from_saving)
-            self.save_worker.start()
-
     def _update_from_training(self, update: TrainUpdate) -> None:
         """Update the training status from the training worker.
 
@@ -385,24 +389,6 @@ class BasePlugin(QWidget):
             else:
                 self.pred_status.update(update)
 
-    def _update_from_saving(self, update: SavingUpdate) -> None:
-        """Update the signal from the saving worker.
-
-        This method receives the updates from the saving worker.
-
-        Parameters
-        ----------
-        update : SavingUpdate
-            Update.
-        """
-        if update.type == SavingUpdateType.DEBUG:
-            print(update.value)
-        elif update.type == SavingUpdateType.EXCEPTION:
-            self.save_status.state = SavingState.CRASHED
-
-            if _has_napari:
-                ntf.show_error(f"An error occurred during saving: \n {update.value}")
-
     def closeEvent(self, event) -> None:
         """Close the plugin.
 
@@ -424,9 +410,10 @@ if __name__ == "__main__":
     base_plugin = BasePlugin(viewer)
     base_plugin.add_careamics_banner()
     base_plugin.add_train_input_ui(base_plugin.careamics_config.needs_gt)
-    base_plugin.add_config_ui()
+    # base_plugin.add_config_ui()
     base_plugin.add_train_button_ui()
     base_plugin.add_prediction_ui()
+    base_plugin.add_model_export_ui()
     viewer.window.add_dock_widget(base_plugin)
     # add image to napari
     # viewer.add_image(data[0][0], name=data[0][1]['name'])

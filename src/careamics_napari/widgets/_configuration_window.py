@@ -13,9 +13,8 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from typing_extensions import Self
 
-from careamics_napari.signals import TrainingSignal
+from careamics_napari.careamics_utils import BaseConfig
 
 try:
     from .qt_widgets import create_double_spinbox, create_int_spinbox
@@ -26,49 +25,47 @@ except ImportError:
         create_int_spinbox,
     )
 
+
 # TODO should it be a singleton to make sure there only a single instance at a time?
 # TODO add checkpointing parameters
 # TODO add minimum percentage and minimum val data
 # TODO add default values from the configuration_signal
-class AdvancedConfigurationWindow(QDialog):
+class AdvancedConfigurationWindow0(QDialog):
     """A dialog widget allowing modifying advanced settings.
 
     Parameters
     ----------
     parent : QWidget
         Parent widget.
-    training_signal : TrainingSignal or None, default=None
-        Signal used to update the parameters set by the user.
+    careamics_config : BaseConfig
+            The configuration for the CAREamics algorithm.
     """
 
-    def __init__(
-        self, parent: QWidget, training_signal: TrainingSignal | None = None
-    ) -> None:
+    def __init__(self, parent: QWidget, careamics_config: BaseConfig) -> None:
         """Initialize the widget.
 
         Parameters
         ----------
         parent : QWidget
             Parent widget.
-        training_signal : TrainingSignal or None, default=None
-            Signal used to update the parameters set by the user.
+        careamics_config : BaseConfig
+            The configuration for the CAREamics algorithm.
         """
         super().__init__(parent)
 
-        self.configuration_signal = (
-            TrainingSignal()  # type: ignore
-            if training_signal is None
-            else training_signal
-        )
+        self.configuration = careamics_config
+        # self.configuration.algorithm_config.model.num_channels_init
 
-        self.setLayout(QVBoxLayout())
+        vbox = QVBoxLayout()
+        self.setLayout(vbox)
 
-        ##################
         # experiment name text box
         experiment_widget = QWidget()
         experiment_layout = QFormLayout()
-        experiment_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-        experiment_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        experiment_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        experiment_layout.setFieldGrowthPolicy(
+            QFormLayout.AllNonFixedFieldsGrow  # type: ignore
+        )
 
         self.experiment_name = QLineEdit()
         self.experiment_name.setToolTip(
@@ -78,24 +75,25 @@ class AdvancedConfigurationWindow(QDialog):
 
         experiment_layout.addRow("Experiment name", self.experiment_name)
         experiment_widget.setLayout(experiment_layout)
-        self.layout().addWidget(experiment_widget)
+        vbox.addWidget(experiment_widget)
 
-        ##################
         # validation
         validation = QGroupBox("Validation")
         validation_layout = QFormLayout()
-        validation_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-        validation_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        validation_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        validation_layout.setFieldGrowthPolicy(
+            QFormLayout.AllNonFixedFieldsGrow  # type: ignore
+        )
 
         self.validation_perc = create_double_spinbox(
-            0.01, 1, self.configuration_signal.val_percentage, 0.01, n_decimal=2
+            0.01, 1, self.configuration.val_percentage, 0.01, n_decimal=2
         )
         self.validation_perc.setToolTip(
             "Percentage of the training data used for validation."
         )
 
         self.validation_split = create_int_spinbox(
-            1, 100, self.configuration_signal.val_minimum_split, 1
+            1, 100, self.configuration.val_minimum_split, 1
         )
         self.validation_perc.setToolTip(
             "Minimum number of patches or images in the validation set."
@@ -104,57 +102,59 @@ class AdvancedConfigurationWindow(QDialog):
         validation_layout.addRow("Percentage", self.validation_perc)
         validation_layout.addRow("Minimum split", self.validation_split)
         validation.setLayout(validation_layout)
-        self.layout().addWidget(validation)
+        vbox.addWidget(validation)
 
-        ##################
         # augmentations group box, with x_flip, y_flip and rotations
         augmentations = QGroupBox("Augmentations")
         augmentations_layout = QFormLayout()
-        augmentations_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-        augmentations_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        augmentations_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        augmentations_layout.setFieldGrowthPolicy(
+            QFormLayout.AllNonFixedFieldsGrow  # type: ignore
+        )
 
         self.x_flip = QCheckBox("X Flip")
         self.x_flip.setToolTip(
-            "Check to add augmentation that flips the image\n" "along the x-axis"
+            "Check to add augmentation that flips the image\nalong the x-axis"
         )
-        self.x_flip.setChecked(self.configuration_signal.x_flip)
+        # self.x_flip.setChecked(self.configuration.x_flip)
 
         self.y_flip = QCheckBox("Y Flip")
         self.y_flip.setToolTip(
-            "Check to add augmentation that flips the image\n" "along the y-axis"
+            "Check to add augmentation that flips the image\nalong the y-axis"
         )
-        self.y_flip.setChecked(self.configuration_signal.y_flip)
+        # self.y_flip.setChecked(self.configuration.y_flip)
 
         self.rotations = QCheckBox("90 Rotations")
         self.rotations.setToolTip(
             "Check to add augmentation that rotates the image\n"
             "in 90 degree increments in XY"
         )
-        self.rotations.setChecked(self.configuration_signal.rotations)
+        # self.rotations.setChecked(self.configuration.rotations)
 
         augmentations_layout.addRow(self.x_flip)
         augmentations_layout.addRow(self.y_flip)
         augmentations_layout.addRow(self.rotations)
         augmentations.setLayout(augmentations_layout)
-        self.layout().addWidget(augmentations)
+        vbox.addWidget(augmentations)
 
-        ##################
         # channels
         self.channels = QGroupBox("Channels")
         channels_layout = QVBoxLayout()
 
         ind_channels_widget = QWidget()
         ind_channels_layout = QFormLayout()
-        ind_channels_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-        ind_channels_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        ind_channels_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        ind_channels_layout.setFieldGrowthPolicy(
+            QFormLayout.AllNonFixedFieldsGrow  # type: ignore
+        )
 
         self.independent_channels = QCheckBox("Independent")
         self.independent_channels.setToolTip(
-            "Check to treat the channels independently during\n" "training."
+            "Check to treat the channels independently during\ntraining."
         )
-        self.independent_channels.setChecked(
-            self.configuration_signal.independent_channels
-        )
+        # self.independent_channels.setChecked(
+        #     self.configuration.independent_channels
+        # )
 
         ind_channels_layout.addRow(self.independent_channels)
         ind_channels_widget.setLayout(ind_channels_layout)
@@ -165,9 +165,10 @@ class AdvancedConfigurationWindow(QDialog):
         n2v_channels_widget_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
         n2v_channels_widget_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
-        self.n_channels = create_int_spinbox(
-            1, 10, self.configuration_signal.n_channels_n2v, 1
-        )
+        # self.n_channels = create_int_spinbox(
+        #     1, 10, self.configuration.n_channels_n2v, 1
+        # )
+        self.n_channels = create_int_spinbox(1, 10, 2, 1)
         self.n_channels.setToolTip("Number of channels in the input images")
 
         n2v_channels_widget_layout.addRow("Channels", self.n_channels)
@@ -177,14 +178,18 @@ class AdvancedConfigurationWindow(QDialog):
         care_channels_widget = QWidget()
         care_channels_widget_layout = QFormLayout()
         care_channels_widget_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-        care_channels_widget_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        care_channels_widget_layout.setFieldGrowthPolicy(
+            QFormLayout.AllNonFixedFieldsGrow
+        )
 
-        self.n_channels_in = create_int_spinbox(
-            1, 10, self.configuration_signal.n_channels_in_care, 1
-        )
-        self.n_channels_out = create_int_spinbox(
-            1, 10, self.configuration_signal.n_channels_out_care, 1
-        )
+        # self.n_channels_in = create_int_spinbox(
+        #     1, 10, self.configuration.n_channels_in_care, 1
+        # )
+        # self.n_channels_out = create_int_spinbox(
+        #     1, 10, self.configuration.n_channels_out_care, 1
+        # )
+        self.n_channels_in = create_int_spinbox(1, 10, 2, 1)
+        self.n_channels_out = create_int_spinbox(1, 10, 2, 1)
 
         care_channels_widget_layout.addRow("Channels in", self.n_channels_in)
         care_channels_widget_layout.addRow("Channels out", self.n_channels_out)
@@ -198,7 +203,7 @@ class AdvancedConfigurationWindow(QDialog):
         channels_layout.addWidget(ind_channels_widget)
         channels_layout.addWidget(self.channels_stack)
         self.channels.setLayout(channels_layout)
-        self.layout().addWidget(self.channels)
+        vbox.addWidget(self.channels)
 
         ##################
         # n2v2
@@ -209,11 +214,11 @@ class AdvancedConfigurationWindow(QDialog):
 
         self.use_n2v2 = QCheckBox("Use N2V2")
         self.use_n2v2.setToolTip("Check to use N2V2 for training.")
-        self.use_n2v2.setChecked(self.configuration_signal.use_n2v2)
+        # self.use_n2v2.setChecked(self.configuration.use_n2v2)
 
         n2v2_layout.addRow(self.use_n2v2)
         self.n2v2_widget.setLayout(n2v2_layout)
-        self.layout().addWidget(self.n2v2_widget)
+        vbox.addWidget(self.n2v2_widget)
 
         ##################
         # model params
@@ -222,11 +227,13 @@ class AdvancedConfigurationWindow(QDialog):
         model_params_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
         model_params_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
-        self.model_depth = create_int_spinbox(2, 5, self.configuration_signal.depth, 1)
+        # self.model_depth = create_int_spinbox(2, 5, self.configuration.depth, 1)
+        self.model_depth = create_int_spinbox(2, 5, 2, 1)
         self.model_depth.setToolTip("Depth of the U-Net model.")
-        self.size_conv_filters = create_int_spinbox(
-            8, 1024, self.configuration_signal.num_conv_filters, 8
-        )
+        # self.size_conv_filters = create_int_spinbox(
+        #     8, 1024, self.configuration.num_conv_filters, 8
+        # )
+        self.size_conv_filters = create_int_spinbox(8, 1024, 2, 8)
         self.size_conv_filters.setToolTip(
             "Number of convolutional filters in the first layer."
         )
@@ -234,7 +241,7 @@ class AdvancedConfigurationWindow(QDialog):
         model_params_layout.addRow("Depth", self.model_depth)
         model_params_layout.addRow("N filters", self.size_conv_filters)
         model_params.setLayout(model_params_layout)
-        self.layout().addWidget(model_params)
+        vbox.addWidget(model_params)
 
         ##################
         # save button
@@ -244,24 +251,23 @@ class AdvancedConfigurationWindow(QDialog):
         self.save_button.setMinimumWidth(120)
         button_widget.layout().addWidget(self.save_button)
         button_widget.layout().setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.layout().addWidget(button_widget)
+        vbox.addWidget(button_widget)
 
-        ##################
         # actions and set defaults
         self.save_button.clicked.connect(self._save)
 
-        if self.configuration_signal is not None:
-            self.configuration_signal.events.use_channels.connect(
-                self._update_to_channels
-            )
-            self._update_to_channels(self.configuration_signal.use_channels)
+        # if self.configuration is not None:
+        #     self.configuration.events.use_channels.connect(
+        #         self._update_to_channels
+        #     )
+        #     self._update_to_channels(self.configuration.use_channels)
 
-            self.configuration_signal.events.algorithm.connect(
-                self._update_to_algorithm
-            )
-            self._update_to_algorithm(self.configuration_signal.algorithm)
+        #     self.configuration.events.algorithm.connect(
+        #         self._update_to_algorithm
+        #     )
+        #     self._update_to_algorithm(self.configuration.algorithm)
 
-    def _update_to_algorithm(self: Self, name: str) -> None:
+    def _update_to_algorithm(self, name: str) -> None:
         """Update the widget to the selected algorithm.
 
         If Noise2Void is selected, the widget will show the N2V2 parameters.
@@ -278,7 +284,7 @@ class AdvancedConfigurationWindow(QDialog):
             self.n2v2_widget.setVisible(False)
             self.channels_stack.setCurrentIndex(1)
 
-    def _update_to_channels(self: Self, use_channels: bool) -> None:
+    def _update_to_channels(self, use_channels: bool) -> None:
         """Update the widget to show the channels parameters.
 
         Parameters
@@ -288,25 +294,25 @@ class AdvancedConfigurationWindow(QDialog):
         """
         self.channels.setVisible(use_channels)
 
-    def _save(self: Self) -> None:
+    def _save(self) -> None:
         """Save the parameters and close the dialog."""
         # Update the parameters
-        if self.configuration_signal is not None:
-            self.configuration_signal.experiment_name = self.experiment_name.text()
-            self.configuration_signal.val_percentage = self.validation_perc.value()
-            self.configuration_signal.val_minimum_split = self.validation_split.value()
-            self.configuration_signal.x_flip = self.x_flip.isChecked()
-            self.configuration_signal.y_flip = self.y_flip.isChecked()
-            self.configuration_signal.rotations = self.rotations.isChecked()
-            self.configuration_signal.independent_channels = (
-                self.independent_channels.isChecked()
-            )
-            self.configuration_signal.n_channels_n2v = self.n_channels.value()
-            self.configuration_signal.n_channels_in_care = self.n_channels_in.value()
-            self.configuration_signal.n_channels_out_care = self.n_channels_out.value()
-            self.configuration_signal.use_n2v2 = self.use_n2v2.isChecked()
-            self.configuration_signal.depth = self.model_depth.value()
-            self.configuration_signal.num_conv_filters = self.size_conv_filters.value()
+        if self.configuration is not None:
+            self.configuration.experiment_name = self.experiment_name.text()
+            self.configuration.val_percentage = self.validation_perc.value()
+            self.configuration.val_minimum_split = self.validation_split.value()
+            # self.configuration.x_flip = self.x_flip.isChecked()
+            # self.configuration.y_flip = self.y_flip.isChecked()
+            # self.configuration.rotations = self.rotations.isChecked()
+            # self.configuration.independent_channels = (
+            #     self.independent_channels.isChecked()
+            # )
+            # self.configuration.n_channels_n2v = self.n_channels.value()
+            # self.configuration.n_channels_in_care = self.n_channels_in.value()
+            # self.configuration.n_channels_out_care = self.n_channels_out.value()
+            # self.configuration.use_n2v2 = self.use_n2v2.isChecked()
+            # self.configuration.depth = self.model_depth.value()
+            # self.configuration.num_conv_filters = self.size_conv_filters.value()
 
         self.close()
 
@@ -316,17 +322,12 @@ if __name__ == "__main__":
 
     from qtpy.QtWidgets import QApplication
 
+    from careamics_napari.careamics_utils import get_default_n2v_config
+
+    config = get_default_n2v_config()
     # Create a QApplication instance
     app = QApplication(sys.argv)
-
-    # Signals
-    myalgo = TrainingSignal(use_channels=False)  # type: ignore
-
-    # Instantiate widget
-    widget = AdvancedConfigurationWindow(None, training_signal=myalgo)  # type: ignore
-
-    # Show the widget
+    widget = AdvancedConfigurationWindow0(None, config)  # type: ignore
     widget.show()
 
-    # Run the application event loop
     sys.exit(app.exec_())

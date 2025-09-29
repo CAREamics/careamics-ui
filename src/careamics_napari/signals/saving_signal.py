@@ -10,11 +10,11 @@ from pathlib import Path
 class ExportType(Enum):
     """Type of model export."""
 
-    BMZ = "Bioimage.io"
-    """Bioimage.io model format."""
-
     CKPT = "Checkpoint"
     """PyTorch Lightning checkpoint."""
+
+    BMZ = "Bioimage.io"
+    """Bioimage.io model format."""
 
     @classmethod
     def list(cls) -> list[str]:

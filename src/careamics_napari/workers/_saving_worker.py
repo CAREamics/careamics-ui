@@ -49,7 +49,6 @@ def save_worker(
     # save model
     try:
         if config_signal.export_type == ExportType.BMZ:
-
             raise NotImplementedError("Export to BMZ not implemented yet (but soon).")
 
         else:

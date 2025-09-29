@@ -13,14 +13,9 @@ from qtpy.QtWidgets import (
 from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.widgets import FolderWidget, layer_choice
 
-# if TYPE_CHECKING:
-#     import napari
-#     from napari.layers import Image
-
 # at run time
 try:
     import napari
-    # from napari.layers import Image
 except ImportError:
     _has_napari = False
 else:

@@ -1,108 +1,97 @@
 """A widget allowing users to select a model type and a path."""
 
+import traceback
 from pathlib import Path
-from typing import Optional
 
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
     QComboBox,
     QFileDialog,
     QGroupBox,
-    QHBoxLayout,
     QPushButton,
     QVBoxLayout,
-    QWidget,
 )
-from typing_extensions import Self
 
+# from careamics import CAREamist
+from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.signals import (
     ExportType,
-    SavingSignal,
-    SavingState,
-    SavingStatus,
     TrainingState,
     TrainingStatus,
 )
 
+try:
+    import napari.utils.notifications as ntf
+except ImportError:
+    _has_napari = False
+else:
+    _has_napari = True
+
 
 class SavingWidget(QGroupBox):
-    """A widget allowing users to select a model type and a path.
+    """A widget allowing users to export and save a model.
 
     Parameters
     ----------
+    careamics_config : BaseConfig
+        The configuration for the CAREamics algorithm.
+    careamist : CAREamist
+            Instance of CAREamist.
     train_status : TrainingStatus or None, default=None
         Signal containing training parameters.
-    save_status : SavingStatus or None, default=None
-        Signal containing saving parameters.
-    save_signal : SavingSignal or None, default=None
-        Signal to trigger saving.
     """
 
+    export_model = Signal(Path, str)
+
     def __init__(
-        self: Self,
-        train_status: Optional[TrainingStatus] = None,
-        save_status: Optional[SavingStatus] = None,
-        save_signal: Optional[SavingSignal] = None,
+        self,
+        careamics_config: BaseConfig,
+        # careamist: CAREamist | None = None,
+        train_status: TrainingStatus | None = None,
     ) -> None:
         """Initialize the widget.
 
         Parameters
         ----------
+        careamics_config : BaseConfig
+            The configuration for the CAREamics algorithm.
+        careamist : CAREamist
+            Instance of CAREamist.
         train_status : TrainingStatus or None, default=None
             Signal containing training parameters.
-        save_status : SavingStatus or None, default=None
-            Signal containing saving parameters.
-        save_signal : SavingSignal or None, default=None
-            Signal to trigger saving.
         """
         super().__init__()
 
+        self.configuration = careamics_config
+        # self.careamist = careamist
         self.train_status = train_status
-        self.save_status = save_status
-        self.save_signal = save_signal
 
-        self.setTitle("Save")
-        self.setLayout(QVBoxLayout())
+        self.setTitle("Export")
 
-        # Save button
-        save_widget = QWidget()
-        save_widget.setLayout(QHBoxLayout())
+        # format combobox
         self.save_choice = QComboBox()
         self.save_choice.addItems(ExportType.list())
         self.save_choice.setToolTip("Output format")
 
-        self.save_button = QPushButton("Save model", self)
+        self.save_button = QPushButton("Export Model")
         self.save_button.setMinimumWidth(120)
         self.save_button.setEnabled(False)
-        self.save_choice.setToolTip("Save the model weights and configuration.")
+        self.save_button.setToolTip("Save the model weights and configuration.")
 
-        save_widget.layout().addWidget(self.save_choice)
-        save_widget.layout().addWidget(self.save_button, alignment=Qt.AlignLeft)
-        self.layout().addWidget(save_widget)
+        # layout
+        vbox = QVBoxLayout()
+        vbox.addWidget(self.save_choice)
+        vbox.addWidget(self.save_button, alignment=Qt.AlignLeft)  # type: ignore
+        self.setLayout(vbox)
 
         # actions
         if self.train_status is not None:
             # updates from signals
             self.train_status.events.state.connect(self._update_training_state)
-
             # when clicking the save button
             self.save_button.clicked.connect(self._save_model)
 
-            # when changing the format
-            self.save_choice.currentIndexChanged.connect(self._update_export_type)
-
-    def _update_export_type(self: Self, index: int) -> None:
-        """Set the signal export type to the selected format.
-
-        Parameters
-        ----------
-        index : int
-            Index of the selected format.
-        """
-        if self.save_signal is not None:
-            self.save_signal.export_type = self.save_choice.currentText()
-
-    def _update_training_state(self: Self, state: TrainingState) -> None:
+    def _update_training_state(self, state: TrainingState) -> None:
         """Update the widget state based on the training state.
 
         Parameters
@@ -115,42 +104,32 @@ class SavingWidget(QGroupBox):
         elif state == TrainingState.IDLE:
             self.save_button.setEnabled(False)
 
-    def _save_model(self: Self) -> None:
-        """Prompt users with a path selection dialog and update the saving state."""
-        if self.save_status is not None:
-            if self.save_signal is not None and (
-                self.save_status.state == SavingState.IDLE
-                or self.save_status.state == SavingState.DONE
-                or self.save_status.state == SavingState.CRASHED
-            ):
-                # destination = Path(QFileDialog.getSaveFileName(caption='Save model'))
-                destination = Path(
-                    QFileDialog.getExistingDirectory(caption="Save model")
+    def _save_model(self) -> None:
+        """Ask user for the destination folder and export the model."""
+        destination = Path(QFileDialog.getExistingDirectory(caption="Export Model"))
+        export_type = self.save_choice.currentText()
+        # emit export
+        # self._export_model(destination, export_type)
+        self.export_model.emit(destination, export_type)
+
+    def _export_model(self, destination: Path, export_type: str) -> None:
+        dims = "3D" if self.configuration.is_3D else "2D"
+        algo_name = self.configuration.algorithm_config.get_algorithm_friendly_name()
+        name = f"{algo_name}_{dims}_{self.configuration.experiment_name}"
+
+        try:
+            if export_type == ExportType.BMZ:
+                raise NotImplementedError("Export to BMZ not implemented yet (but soon).")
+            elif self.careamist is not None:
+                name = name + ".ckpt"
+                self.careamist.trainer.save_checkpoint(
+                    destination.joinpath(name),
                 )
-                self.save_signal.path_model = destination
+                print(f"Model exported at {destination}")
+                if _has_napari:
+                    ntf.show_info(f"Model exported at {destination}")
 
-                # trigger saving
-                self.save_status.state = SavingState.SAVING
-
-
-if __name__ == "__main__":
-    import sys
-
-    from qtpy.QtWidgets import QApplication
-
-    # Create a QApplication instance
-    app = QApplication(sys.argv)
-
-    # create signal
-    train_signal = TrainingStatus()  # type: ignore
-    save_signal = SavingSignal()  # type: ignore
-    save_status = SavingStatus()  # type: ignore
-
-    # Instantiate widget
-    widget = SavingWidget(train_signal, save_status, save_signal)
-
-    # Show the widget
-    widget.show()
-
-    # Run the application event loop
-    sys.exit(app.exec_())
+        except Exception as e:
+            traceback.print_exc()
+            if _has_napari:
+                ntf.show_error(str(e))

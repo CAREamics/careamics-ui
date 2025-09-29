@@ -2,10 +2,9 @@
 
 from queue import Queue
 
-import napari.utils.notifications as ntf
 import numpy as np
 from careamics import CAREamist
-from qtpy.QtCore import Qt, Signal
+from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
     QCheckBox,
     QFileDialog,
@@ -32,6 +31,14 @@ from careamics_napari.widgets.qt_widgets import (
     create_progressbar,
 )
 from careamics_napari.widgets.utils import bind
+
+try:
+    import napari
+    import napari.utils.notifications as ntf
+except ImportError:
+    _has_napari = False
+else:
+    _has_napari = True
 
 
 class PredictionWidget(QGroupBox):
@@ -249,7 +256,9 @@ class PredictionWidget(QGroupBox):
         if selected_file is not None and len(selected_file) > 0:
             careamist = self._load_model(selected_file)
             if careamist is None:
-                ntf.show_error(f"Error loading the model: {selected_file}")
+                print(f"Error loading the model: {selected_file}")
+                if _has_napari:
+                    ntf.show_error(f"Error loading the model: {selected_file}")
                 return
             # sent the careamist to the parent window / plugin
             self.careamist_loaded.emit(careamist)

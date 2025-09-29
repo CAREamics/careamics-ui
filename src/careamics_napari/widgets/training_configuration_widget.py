@@ -1,7 +1,8 @@
 """A widget allowing the creation of a CAREamics configuration."""
 
+from careamics.config.data import DataConfig
 from qtpy import QtGui
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
     QCheckBox,
     QFormLayout,
@@ -13,7 +14,6 @@ from qtpy.QtWidgets import (
 from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.resources import ICON_GEAR
 from careamics_napari.widgets import (
-    # AdvancedConfigurationWindow,
     AxesWidget,
     PowerOfTwoSpinBox,
     create_int_spinbox,
@@ -30,6 +30,9 @@ class ConfigurationWidget(QGroupBox):
         careamics configuration object.
     """
 
+    # signal to show algorithm advanced configuration window.
+    show_advanced_config = Signal()
+
     def __init__(self, careamics_config: BaseConfig) -> None:
         """Initialize the widget.
 
@@ -41,18 +44,16 @@ class ConfigurationWidget(QGroupBox):
         super().__init__()
 
         self.configuration = careamics_config
-        # self.config_window: AdvancedConfigurationWindow | None = None
 
         self.setTitle("Training Parameters")
         self.setMinimumWidth(200)
 
-        # expert settings
+        # advanced settings
         icon = QtGui.QIcon(ICON_GEAR)
         self.training_expert_btn = QPushButton(icon, "")
         self.training_expert_btn.setFixedSize(35, 35)
-        self.training_expert_btn.setToolTip("Open the expert settings menu.")
-        # self.training_expert_btn.clicked.connect(self._show_configuration_window)
-        self.training_expert_btn.clicked.connect(self.update_config)
+        self.training_expert_btn.setToolTip("Open the advanced settings window.")
+        self.training_expert_btn.clicked.connect(lambda: self.show_advanced_config.emit())
 
         # 3D checkbox
         self.enable_3d_chkbox = QCheckBox()
@@ -63,8 +64,14 @@ class ConfigurationWidget(QGroupBox):
         self.axes_widget = AxesWidget(careamics_config=self.configuration)
 
         # number of epochs
-        # self.configuration.training_config.lightning_trainer_config["max_epochs"]
-        self.n_epochs_spin = create_int_spinbox(1, 1000, 30, tooltip="Number of epochs")
+        _n_epochs = 30
+        if self.configuration.training_config.lightning_trainer_config is not None:
+            _n_epochs = self.configuration.training_config.lightning_trainer_config[
+                "max_epochs"
+            ]
+        self.n_epochs_spin = create_int_spinbox(
+            1, 1000, _n_epochs, tooltip="Number of epochs"
+        )
 
         # batch size
         self.batch_size_spin = create_int_spinbox(1, 512, 16, 1)
@@ -93,14 +100,14 @@ class ConfigurationWidget(QGroupBox):
         formLayout.addRow("Patch Z", self.patch_z_spin)
         formLayout.minimumSize()
 
-        hlayout = QVBoxLayout()
-        hlayout.setContentsMargins(5, 20, 5, 10)
-        hlayout.addWidget(
+        vbox = QVBoxLayout()
+        vbox.setContentsMargins(5, 20, 5, 10)
+        vbox.addWidget(
             self.training_expert_btn,
             alignment=Qt.AlignRight | Qt.AlignVCenter,  # type: ignore
         )
-        hlayout.addLayout(formLayout)
-        self.setLayout(hlayout)
+        vbox.addLayout(formLayout)
+        self.setLayout(vbox)
 
         # create and bind properties to ui
         self._bind_properties()
@@ -111,21 +118,24 @@ class ConfigurationWidget(QGroupBox):
         self.axes_widget.update_config()
         # is 3D
         self.configuration.is_3D = self.is_3D
+
         # num epochs
-        self.configuration.training_config.lightning_trainer_config["max_epochs"] = (
-            self.num_epochs
-        )
-        # batch size
-        self.configuration.data_config.batch_size = self.batch_size
-        # patch size
-        _patch_size = [self.patch_xy_size, self.patch_xy_size]
-        if self.is_3D:
-            _patch_size.insert(0, self.patch_z_size)
-        self.configuration.data_config.patch_size = _patch_size
-        self.configuration.set_3D(
-            self.is_3D, self.configuration.data_config.axes, _patch_size
-        )  # maybe not necessary, but let's have it to be sure.
-        print("config widget:\n", self.configuration)
+        if self.configuration.training_config.lightning_trainer_config is not None:
+            self.configuration.training_config.lightning_trainer_config["max_epochs"] = (
+                self.num_epochs
+            )
+
+        if isinstance(self.configuration.data_config, DataConfig):
+            # batch size
+            self.configuration.data_config.batch_size = self.batch_size
+            # patch size
+            _patch_size = [self.patch_xy_size, self.patch_xy_size]
+            if self.is_3D:
+                _patch_size.insert(0, self.patch_z_size)
+            self.configuration.data_config.patch_size = _patch_size
+            self.configuration.set_3D(
+                self.is_3D, self.configuration.data_config.axes, _patch_size
+            )  # maybe not necessary, but let's have it to be sure.
 
     def _enable_3d_changed(self, state: bool) -> None:
         """Update the signal 3D state.
@@ -144,36 +154,32 @@ class ConfigurationWidget(QGroupBox):
             self.enable_3d_chkbox, "checked", self.configuration.is_3D
         )
         # number of epochs
-        type(self).num_epochs = bind(
-            self.n_epochs_spin,
-            "value",
-            self.configuration.training_config.lightning_trainer_config["max_epochs"],
-        )
-        # batch size
-        type(self).batch_size = bind(
-            self.batch_size_spin, "value", self.configuration.data_config.batch_size
-        )
-        # XY patch size
-        type(self).patch_xy_size = bind(
-            self.patch_xy_spin, "value", self.configuration.data_config.patch_size[-2:]
-        )
-        # Z patch size
-        type(self).patch_z_size = bind(
-            self.patch_z_spin,
-            "value",
-            self.configuration.data_config.patch_size[0]
-            if self.configuration.is_3D
-            else None,
-        )
+        if self.configuration.training_config.lightning_trainer_config is not None:
+            type(self).num_epochs = bind(
+                self.n_epochs_spin,
+                "value",
+                self.configuration.training_config.lightning_trainer_config["max_epochs"],
+            )
 
-    # def _show_configuration_window(self: Self) -> None:
-    #     """Show the advanced configuration window."""
-    #     if self.config_window is None or self.config_window.isHidden():
-    #         self.config_window = AdvancedConfigurationWindow(
-    #             self, self.configuration
-    #         )
-
-    #         self.config_window.show()
+        if isinstance(self.configuration.data_config, DataConfig):
+            # batch size
+            type(self).batch_size = bind(
+                self.batch_size_spin, "value", self.configuration.data_config.batch_size
+            )
+            # XY patch size
+            type(self).patch_xy_size = bind(
+                self.patch_xy_spin,
+                "value",
+                self.configuration.data_config.patch_size[-2:],
+            )
+            # Z patch size
+            type(self).patch_z_size = bind(
+                self.patch_z_spin,
+                "value",
+                self.configuration.data_config.patch_size[0]
+                if self.configuration.is_3D
+                else None,
+            )
 
 
 if __name__ == "__main__":
