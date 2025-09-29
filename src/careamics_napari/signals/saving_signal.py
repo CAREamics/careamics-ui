@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 
 
 class ExportType(Enum):
@@ -28,17 +26,17 @@ class ExportType(Enum):
         return [c.value for c in cls]
 
 
-@dataclass
-class SavingSignal:
-    """Saving signal class.
+# @dataclass
+# class SavingSignal:
+#     """Saving signal class.
 
-    This class holds the parameters required to run the prediction thread. These
-    parameters should be set whenever the user interact with the corresponding UI
-    elements.
-    """
+#     This class holds the parameters required to run the prediction thread. These
+#     parameters should be set whenever the user interact with the corresponding UI
+#     elements.
+#     """
 
-    path_model: Path = Path(".")
-    """Path in which to save the model."""
+#     path_model: Path = Path(".")
+#     """Path in which to save the model."""
 
-    export_type: ExportType = ExportType.BMZ
-    """Format of model export."""
+#     export_type: ExportType = ExportType.BMZ
+#     """Format of model export."""
