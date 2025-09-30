@@ -65,7 +65,8 @@ class BasePlugin(QWidget):
         """
         super().__init__()
         self.viewer = napari_viewer
-        self.careamist: CAREamist | None = None
+        self.careamist: CAREamist | None = None  # to hold trained careamist
+        self.careamist_loaded: CAREamist | None = None  # to hold loaded careamist
 
         # create statuses, used to keep track of the threads statuses
         self.train_status = TrainingStatus()  # type: ignore
@@ -263,8 +264,12 @@ class BasePlugin(QWidget):
         state : PredictionState
             New state.
         """
-        if self.careamist is None:
-            ntf.show_info("No trained model is available for prediction.")
+        # if self.careamist is None and self.careamist_loaded is None:
+        #     ntf.show_info("No trained or loaded model is available for prediction.")
+        #     self.pred_status.state = PredictionState.STOPPED
+        #     return
+        careamist = self._which_careamist()
+        if careamist is None:
             self.pred_status.state = PredictionState.STOPPED
             return
 
@@ -282,7 +287,7 @@ class BasePlugin(QWidget):
 
             # start the prediction thread
             self.pred_worker = predict_worker(
-                self.careamist,
+                careamist,
                 data_source,
                 self.careamics_config,
                 self._prediction_queue,
@@ -292,20 +297,34 @@ class BasePlugin(QWidget):
 
         elif state == PredictionState.STOPPED:
             # exhaust the data fetcher to stop the prediction
-            if self.careamist.trainer.predict_loop._data_fetcher is not None:
-                deque(self.careamist.trainer.predict_loop._data_fetcher, maxlen=0)
-                self.careamist.trainer.predict_loop.reset()
+            if careamist.trainer.predict_loop._data_fetcher is not None:
+                deque(careamist.trainer.predict_loop._data_fetcher, maxlen=0)
+                careamist.trainer.predict_loop.reset()
                 self._prediction_queue.put(
                     PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
                 )
 
     def _on_careamist_loaded(self, careamist: CAREamist) -> None:
         """Callback when a CAREamics instance has been loaded."""
-        self.careamist = careamist
+        self.careamist_loaded = careamist
         print(
             f"CAREamics instance loaded: "
-            f"{self.careamist.cfg.get_algorithm_friendly_name()}"
+            f"{self.careamist_loaded.cfg.get_algorithm_friendly_name()}"
         )
+
+    def _which_careamist(self) -> CAREamist | None:
+        """Which careamist to use? Trained one or the loaded one."""
+        # if load from disk option is selected
+        if self.prediction_widget.load_from_disk:
+            careamist = self.careamist_loaded
+            if careamist is None:
+                ntf.show_warning("No model was loaded from disk!")
+        else:
+            careamist = self.careamist
+            if careamist is None:
+                ntf.show_warning("No trained model is available.")
+
+        return careamist
 
     def _update_from_training(self, update: TrainUpdate) -> None:
         """Update the training status from the training worker.

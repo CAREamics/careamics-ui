@@ -233,6 +233,8 @@ class PredictionWidget(QGroupBox):
 
     def _bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""
+        # to check if should use a loaded model
+        type(self).load_from_disk = bind(self.from_disk_radiobutton, "checked", False)
         # tiling
         type(self).do_tiling = bind(self.tiling_cbox, "checked", True)
         # tile size in xy
@@ -244,9 +246,9 @@ class PredictionWidget(QGroupBox):
 
     def _model_selection_changed(self) -> None:
         """Update model selection ui."""
-        load_from_disk = self.from_disk_radiobutton.isChecked()
-        self.model_textbox.setEnabled(load_from_disk)
-        self.load_button.setEnabled(load_from_disk)
+        # load_from_disk = self.from_disk_radiobutton.isChecked()
+        self.model_textbox.setEnabled(self.load_from_disk)
+        self.load_button.setEnabled(self.load_from_disk)
 
     def _select_model_checkpoint(self) -> None:
         """Load a selected CAREamics model."""
