@@ -1,6 +1,5 @@
 """A widget allowing users to select a model type and a path."""
 
-import traceback
 from pathlib import Path
 
 from qtpy.QtCore import Qt, Signal  # type: ignore
@@ -12,20 +11,12 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
 )
 
-# from careamics import CAREamist
 from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.signals import (
     ExportType,
     TrainingState,
     TrainingStatus,
 )
-
-try:
-    import napari.utils.notifications as ntf
-except ImportError:
-    _has_napari = False
-else:
-    _has_napari = True
 
 
 class SavingWidget(QGroupBox):
@@ -106,30 +97,9 @@ class SavingWidget(QGroupBox):
 
     def _save_model(self) -> None:
         """Ask user for the destination folder and export the model."""
-        destination = Path(QFileDialog.getExistingDirectory(caption="Export Model"))
-        export_type = self.save_choice.currentText()
-        # emit export
-        # self._export_model(destination, export_type)
-        self.export_model.emit(destination, export_type)
-
-    def _export_model(self, destination: Path, export_type: str) -> None:
-        dims = "3D" if self.configuration.is_3D else "2D"
-        algo_name = self.configuration.algorithm_config.get_algorithm_friendly_name()
-        name = f"{algo_name}_{dims}_{self.configuration.experiment_name}"
-
-        try:
-            if export_type == ExportType.BMZ:
-                raise NotImplementedError("Export to BMZ not implemented yet (but soon).")
-            elif self.careamist is not None:
-                name = name + ".ckpt"
-                self.careamist.trainer.save_checkpoint(
-                    destination.joinpath(name),
-                )
-                print(f"Model exported at {destination}")
-                if _has_napari:
-                    ntf.show_info(f"Model exported at {destination}")
-
-        except Exception as e:
-            traceback.print_exc()
-            if _has_napari:
-                ntf.show_error(str(e))
+        destination = QFileDialog.getExistingDirectory(caption="Export Model")
+        if len(destination) > 0:
+            destination = Path(destination)
+            export_type = self.save_choice.currentText()
+            # emit export
+            self.export_model.emit(destination, export_type)
