@@ -56,11 +56,11 @@ class N2VConfigurationWindow(AdvancedConfigurationWindow):
 
         # roi size spin box
         self.roi_spin = create_int_spinbox(
-            1, 100, self.advanced_configuration.roi_size, 1
+            1, 101, self.advanced_configuration.roi_size, 2
         )
         self.roi_spin.setToolTip(
             "The size of the area around each pixel "
-            "that will be manipulated by algorithm."
+            "that will be manipulated by algorithm (must be an odd number)."
         )
 
         # masked pixel percentage double spin box
