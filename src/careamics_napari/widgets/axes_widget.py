@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Any
 
-from careamics.config.architectures import UNetModel
+from careamics.config.data import DataConfig
 from qtpy import QtGui
 from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
 from typing_extensions import Self
@@ -113,7 +113,7 @@ class AxesWidget(QWidget):
 
         # text field
         self.label = QLabel("Axes")
-        self.text_field = QLineEdit(careamics_config.data_config.axes)  # type: ignore
+        self.text_field = QLineEdit(self.configuration.data_config.axes)  # type: ignore
         self.text_field.setMaxLength(6)
         self.text_field.setValidator(LettersValidator(REF_AXES))
         self.text_field.textChanged.connect(self._validate_axes)  # type: ignore
@@ -141,13 +141,8 @@ class AxesWidget(QWidget):
 
     def update_config(self: Self) -> None:
         """Update the axes in the configuration if it's valid."""
-        if self.is_text_valid:
-            self.configuration.data_config.axes = self.axes  # type: ignore
-            if isinstance(self.configuration.algorithm_config.model, UNetModel):
-                self.configuration.algorithm_config.model.independent_channels = (
-                    "C" in self.axes
-                )
-            # print(self.configuration)
+        if self.is_text_valid and isinstance(self.configuration.data_config, DataConfig):
+            self.configuration.data_config.axes = self.axes
 
     def _validate_axes(self: Self, axes: str | None = None) -> bool:
         """Validate the input text in the text field."""

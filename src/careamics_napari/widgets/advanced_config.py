@@ -153,6 +153,9 @@ class AdvancedConfigurationWindow(QDialog):
         self.indi_channels_chkbox.setToolTip(
             "Check to treat the channels independently during\ntraining."
         )
+        self.indi_channels_chkbox.setEnabled(
+            "C" in self.configuration.data_config.axes  # type: ignore
+        )
 
         # layout
         layout = QVBoxLayout()
