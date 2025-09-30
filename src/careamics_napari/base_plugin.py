@@ -147,6 +147,7 @@ class BasePlugin(QWidget):
         self.base_layout.addWidget(self.prediction_widget)
         # to get loaded careamist
         self.prediction_widget.careamist_loaded.connect(self._on_careamist_loaded)
+        self.prediction_widget.model_from_disk.connect(self._model_selection_changed)
 
     def add_model_export_ui(self) -> None:
         """Add the model saving UI to the plugin."""
@@ -305,12 +306,21 @@ class BasePlugin(QWidget):
                 )
 
     def _on_careamist_loaded(self, careamist: CAREamist) -> None:
-        """Callback when a CAREamics instance has been loaded."""
+        """Event handler called when a CAREamics instance has been loaded."""
         self.careamist_loaded = careamist
         print(
             f"CAREamics instance loaded: "
             f"{self.careamist_loaded.cfg.get_algorithm_friendly_name()}"
         )
+
+    def _model_selection_changed(self, from_disk: bool) -> None:
+        """Event handler called when user changed the model selection."""
+        # update the prediction and stop buttons
+        if not from_disk:
+            self.prediction_widget.update_button_from_train(self.train_status.state)
+        elif self.careamist_loaded is not None:
+            self.prediction_widget.predict_button.setEnabled(True)
+            self.prediction_widget.stop_button.setEnabled(False)
 
     def _which_careamist(self) -> CAREamist | None:
         """Which careamist to use? Trained one or the loaded one."""

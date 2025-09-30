@@ -57,6 +57,8 @@ class PredictionWidget(QGroupBox):
     # set a signal to send a careamist object
     # when it's loaded from disk.
     careamist_loaded = Signal(CAREamist)
+    # signal for model selection changed
+    model_from_disk = Signal(bool)
 
     def __init__(
         self,
@@ -211,8 +213,10 @@ class PredictionWidget(QGroupBox):
         """
         if state == TrainingState.DONE:
             self.predict_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
         else:
             self.predict_button.setEnabled(False)
+            self.stop_button.setEnabled(False)
 
     def get_data_source(self) -> str | np.ndarray | None:
         """Get the selected data sources from the predict data widget."""
@@ -249,6 +253,7 @@ class PredictionWidget(QGroupBox):
         # load_from_disk = self.from_disk_radiobutton.isChecked()
         self.model_textbox.setEnabled(self.load_from_disk)
         self.load_button.setEnabled(self.load_from_disk)
+        self.model_from_disk.emit(self.load_from_disk)
 
     def _select_model_checkpoint(self) -> None:
         """Load a selected CAREamics model."""
@@ -266,6 +271,7 @@ class PredictionWidget(QGroupBox):
             self.careamist_loaded.emit(careamist)
             self.model_textbox.setText(selected_file)
             self.predict_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
 
     def _load_model(self, model_path: str) -> CAREamist | None:
         """Load a CAREamics model.
@@ -358,11 +364,7 @@ class PredictionWidget(QGroupBox):
     def _predict_button_clicked(self) -> None:
         """Run the prediction on the images."""
         if self.pred_status is not None:
-            if (
-                self.pred_status.state == PredictionState.IDLE
-                or self.train_status.state == TrainingState.DONE
-                or self.pred_status.state == PredictionState.CRASHED
-            ):
+            if self.pred_status.state != PredictionState.PREDICTING:
                 self.predict_button.setEnabled(False)
                 self.stop_button.setEnabled(True)
                 self.pred_status.state = PredictionState.PREDICTING
@@ -387,6 +389,7 @@ class PredictionWidget(QGroupBox):
             or state == PredictionState.STOPPED
         ):
             self.predict_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
 
 
 if __name__ == "__main__":
