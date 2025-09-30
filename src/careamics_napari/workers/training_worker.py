@@ -144,7 +144,7 @@ def _train(
         else:
             # only update the number of epochs
             if configuration.training_config.lightning_trainer_config:
-                careamist.cfg.training_config.num_epochs = (  # type: ignore
+                configuration.training_config.lightning_trainer_config["max_epochs"] = (
                     configuration.training_config.lightning_trainer_config["max_epochs"]
                 )
             if val_data is None:
