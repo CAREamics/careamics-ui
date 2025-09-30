@@ -2,6 +2,7 @@
 
 from careamics_napari.base_plugin import BasePlugin
 from careamics_napari.careamics_utils import N2VAdvancedConfig, get_default_n2v_config
+from careamics_napari.widgets import N2VConfigurationWindow
 
 try:
     import napari
@@ -42,21 +43,20 @@ class N2VPlugin(BasePlugin):
         # assemble plugin ui
         self.add_careamics_banner("CAREamics UI for training N2V denoising model.")
         self.add_train_input_ui(use_target=False)
-        # self.add_config_ui()
-        # self.config_widget = None
+        self.add_config_ui()
         self.add_train_button_ui()
-        # self.add_prediction_ui()
-        # self.add_model_export_ui()
+        self.add_prediction_ui()
+        self.add_model_export_ui()
 
     def show_advanced_config(self) -> None:
         """Show advanced configuration."""
         # update axes in configuration
-        # self.config_widget.axes_widget.update_config()
+        self.config_widget.axes_widget.update_config()
 
         # show window with advanced options
-        # win = N2VConfigurationWindow(self, self.careamics_config, self.advanced_config)
-        # win.finished.connect(lambda: print(self.advanced_config, self.careamics_config))
-        # win.show()
+        win = N2VConfigurationWindow(self, self.careamics_config, self.advanced_config)
+        win.finished.connect(lambda: print(self.advanced_config, self.careamics_config))
+        win.show()
         pass
 
 

@@ -279,11 +279,13 @@ class PredictionWidget(QGroupBox):
             CAREamist instance or None if the model could not be loaded.
         """
         try:
-            # carefully load the model among the mist: careamist!
+            # make a training queue
+            training_queue = Queue(10)
+            # careamist: carefully load the model among the mist! :)
             careamist = CAREamist(
                 model_path,
                 work_dir=self.configuration.work_dir,
-                callbacks=[UpdaterCallBack(self.prediction_queue)],
+                callbacks=[UpdaterCallBack(training_queue, self.prediction_queue)],
             )
             # training is already done!
             # self.train_status.state = TrainingState.DONE
@@ -387,7 +389,6 @@ class PredictionWidget(QGroupBox):
 
 if __name__ == "__main__":
     # import sys
-    import napari
 
     # from qtpy.QtWidgets import QApplication
     from careamics_napari.careamics_utils import get_default_n2v_config

@@ -42,8 +42,8 @@ def predict_worker(
     Generator[PredictionUpdate, None, None]
         Updates.
     """
-    # start training thread
-    training = Thread(
+    # start prediction thread
+    prediction = Thread(
         target=_predict,
         args=(
             careamist,
@@ -52,7 +52,7 @@ def predict_worker(
             update_queue,
         ),
     )
-    training.start()
+    prediction.start()
 
     # look for updates
     while True:
@@ -65,24 +65,6 @@ def predict_worker(
             or update.type == PredictionUpdateType.EXCEPTION
         ):
             break
-
-
-def _push_exception(queue: Queue, e: Exception) -> None:
-    """Push an exception to the queue.
-
-    Parameters
-    ----------
-    queue : Queue
-        Queue.
-    e : Exception
-        Exception.
-    """
-    try:
-        raise e
-    except Exception:
-        traceback.print_exc()
-
-    queue.put(PredictionUpdate(PredictionUpdateType.EXCEPTION, e))
 
 
 def _predict(

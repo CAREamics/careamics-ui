@@ -1,4 +1,5 @@
-# import traceback
+import traceback
+from collections import deque
 from pathlib import Path
 from queue import Queue
 
@@ -22,8 +23,8 @@ from careamics_napari.signals import (
 from careamics_napari.utils.axes_utils import reshape_prediction
 from careamics_napari.widgets import (
     CAREamicsBanner,
-    # ConfigurationWidget,
-    # PredictionWidget,
+    ConfigurationWidget,
+    PredictionWidget,
     SavingWidget,
     ScrollWidgetWrapper,
     TrainDataWidget,
@@ -31,7 +32,7 @@ from careamics_napari.widgets import (
     TrainProgressWidget,
     create_gpu_label,
 )
-from careamics_napari.workers import train_worker  # , predict_worker
+from careamics_napari.workers import predict_worker, train_worker
 
 try:
     import napari
@@ -118,12 +119,12 @@ class BasePlugin(QWidget):
         )
         self.base_layout.addWidget(self.input_data_widget)
 
-    # def add_config_ui(self) -> None:
-    #     """Add the training configuration UI to the plugin."""
-    #     self.config_widget = ConfigurationWidget(self.careamics_config)
-    #     self.config_widget.enable_3d_chkbox.clicked.connect(self._set_pred_3d)
-    #     self.config_widget.show_advanced_config.connect(self.show_advanced_config)
-    #     self.base_layout.addWidget(self.config_widget)
+    def add_config_ui(self) -> None:
+        """Add the training configuration UI to the plugin."""
+        self.config_widget = ConfigurationWidget(self.careamics_config)
+        self.config_widget.enable_3d_chkbox.clicked.connect(self._set_pred_3d)
+        self.config_widget.show_advanced_config.connect(self.show_advanced_config)
+        self.base_layout.addWidget(self.config_widget)
 
     def add_train_button_ui(self) -> None:
         """Add the training button UI to the plugin."""
@@ -134,17 +135,17 @@ class BasePlugin(QWidget):
         self.base_layout.addWidget(self.train_widget)
         self.base_layout.addWidget(self.progress_widget)
 
-    # def add_prediction_ui(self) -> None:
-    #     """Add the prediction UI to the plugin."""
-    #     self.prediction_widget = PredictionWidget(
-    #         self.careamics_config,
-    #         self.train_status,
-    #         self.pred_status,
-    #         self._prediction_queue,
-    #     )
-    #     self.base_layout.addWidget(self.prediction_widget)
-    #     # to get loaded careamist
-    #     self.prediction_widget.careamist_loaded.connect(self._on_careamist_loaded)
+    def add_prediction_ui(self) -> None:
+        """Add the prediction UI to the plugin."""
+        self.prediction_widget = PredictionWidget(
+            self.careamics_config,
+            self.train_status,
+            self.pred_status,
+            self._prediction_queue,
+        )
+        self.base_layout.addWidget(self.prediction_widget)
+        # to get loaded careamist
+        self.prediction_widget.careamist_loaded.connect(self._on_careamist_loaded)
 
     def add_model_export_ui(self) -> None:
         """Add the model saving UI to the plugin."""
@@ -157,11 +158,11 @@ class BasePlugin(QWidget):
 
     def update_config(self) -> None:
         """Update the configuration from the UI."""
-        # if self.config_widget is not None:
-        #     self.config_widget.update_config()
+        if self.config_widget is not None:
+            self.config_widget.update_config()
 
-        # if self.prediction_widget is not None:
-        #     self.prediction_widget.update_config()
+        if self.prediction_widget is not None:
+            self.prediction_widget.update_config()
 
         print(f"update_config:\n{self.careamics_config}")
 
@@ -189,8 +190,7 @@ class BasePlugin(QWidget):
                     ntf.show_info(f"Model exported at {destination}")
 
         except Exception as e:
-            # traceback.print_exc()
-            print(f"Error: {e}")
+            traceback.print_exc()
             if _has_napari:
                 ntf.show_error(str(e))
 
@@ -206,8 +206,8 @@ class BasePlugin(QWidget):
         state : bool
             3D mode.
         """
-        # if self.prediction_widget is not None:
-        #     self.prediction_widget.set_3d(state)
+        if self.prediction_widget is not None:
+            self.prediction_widget.set_3d(state)
 
     def _training_state_changed(self, state: TrainingState) -> None:
         """Handle training state changes.
@@ -232,23 +232,9 @@ class BasePlugin(QWidget):
             self.update_config()
             print(self.careamics_config)
 
-            # cfg = create_n2v_configuration(
-            #     experiment_name="careamics",
-            #     data_type="array",
-            #     axes="YX",
-            #     patch_size=[64, 64],
-            #     batch_size=16,
-            #     num_epochs=5,
-            #     independent_channels=True,
-            #     train_dataloader_params={"num_workers": 0},
-            #     val_dataloader_params={"num_workers": 0},
-            # )
-
             # start the training thread
             self.train_worker = train_worker(
                 self.careamics_config,
-                # get_default_n2v_config(),
-                # cfg,
                 data_sources,
                 self._training_queue,
                 self._prediction_queue,
@@ -266,8 +252,8 @@ class BasePlugin(QWidget):
             self.careamist = None
 
         # update prediction widget
-        # if self.prediction_widget is not None:
-        #     self.prediction_widget.update_button_from_train(state)
+        if self.prediction_widget is not None:
+            self.prediction_widget.update_button_from_train(state)
 
     def _prediction_state_changed(self, state: PredictionState) -> None:
         """Handle prediction state changes.
@@ -282,36 +268,36 @@ class BasePlugin(QWidget):
             self.pred_status.state = PredictionState.STOPPED
             return
 
-        # if state == PredictionState.PREDICTING:
-        #     # get the prediction data
-        #     data_source = self.prediction_widget.get_data_source()
-        #     if data_source is None:
-        #         ntf.show_info("Please set the prediction data first.")
-        #         self.pred_status.state = PredictionState.IDLE
-        #         self.prediction_widget.predict_button.setText("Predict")
-        #         return
+        if state == PredictionState.PREDICTING:
+            # get the prediction data
+            data_source = self.prediction_widget.get_data_source()
+            if data_source is None:
+                ntf.show_info("Please set the prediction data first.")
+                self.pred_status.state = PredictionState.IDLE
+                self.prediction_widget.predict_button.setText("Predict")
+                return
 
-        #     # update configuration from ui
-        #     self.update_config()
+            # update configuration from ui
+            self.update_config()
 
-        #     # start the prediction thread
-        #     self.pred_worker = predict_worker(
-        #         self.careamist,
-        #         data_source,
-        #         self.careamics_config,
-        #         self._prediction_queue,
-        #     )
-        #     self.pred_worker.yielded.connect(self._update_from_prediction)
-        #     self.pred_worker.start()
+            # start the prediction thread
+            self.pred_worker = predict_worker(
+                self.careamist,
+                data_source,
+                self.careamics_config,
+                self._prediction_queue,
+            )
+            self.pred_worker.yielded.connect(self._update_from_prediction)
+            self.pred_worker.start()
 
-        # elif state == PredictionState.STOPPED:
-        #     # exhaust the data fetcher to stop the prediction
-        #     if self.careamist.trainer.predict_loop._data_fetcher is not None:
-        #         deque(self.careamist.trainer.predict_loop._data_fetcher, maxlen=0)
-        #         self.careamist.trainer.predict_loop.reset()
-        #         self._prediction_queue.put(
-        #             PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
-        #         )
+        elif state == PredictionState.STOPPED:
+            # exhaust the data fetcher to stop the prediction
+            if self.careamist.trainer.predict_loop._data_fetcher is not None:
+                deque(self.careamist.trainer.predict_loop._data_fetcher, maxlen=0)
+                self.careamist.trainer.predict_loop.reset()
+                self._prediction_queue.put(
+                    PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
+                )
 
     def _on_careamist_loaded(self, careamist: CAREamist) -> None:
         """Callback when a CAREamics instance has been loaded."""
@@ -410,10 +396,10 @@ if __name__ == "__main__":
     base_plugin = BasePlugin(viewer)
     base_plugin.add_careamics_banner()
     base_plugin.add_train_input_ui(base_plugin.careamics_config.needs_gt)
-    # base_plugin.add_config_ui()
+    base_plugin.add_config_ui()
     base_plugin.add_train_button_ui()
-    # base_plugin.add_prediction_ui()
-    # base_plugin.add_model_export_ui()
+    base_plugin.add_prediction_ui()
+    base_plugin.add_model_export_ui()
     viewer.window.add_dock_widget(base_plugin)
     # add image to napari
     # viewer.add_image(data[0][0], name=data[0][1]['name'])

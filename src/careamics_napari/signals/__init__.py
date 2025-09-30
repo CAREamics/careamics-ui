@@ -6,7 +6,6 @@ __all__ = [
     "PredictionStatus",
     "PredictionUpdate",
     "PredictionUpdateType",
-    # "SavingSignal",
     "SavingState",
     "SavingStatus",
     "SavingUpdate",

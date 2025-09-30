@@ -34,9 +34,7 @@ class UpdaterCallBack(Callback):
         Prediction queue used to pass updates between threads.
     """
 
-    def __init__(
-        self: Self, prediction_queue: Queue, training_queue: Queue | None = None
-    ) -> None:
+    def __init__(self: Self, training_queue: Queue, prediction_queue: Queue) -> None:
         """Initialize the callback.
 
         Parameters
@@ -46,9 +44,6 @@ class UpdaterCallBack(Callback):
         prediction_queue : Queue
             Prediction queue used to pass updates between threads.
         """
-        # for only prediction, the training queue is not needed.
-        if training_queue is None:
-            training_queue = Queue(10)
         self.training_queue = training_queue
         self.prediction_queue = prediction_queue
 
