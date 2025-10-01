@@ -41,7 +41,9 @@ class N2NPlugin(BasePlugin):
         self.advanced_config = N2NAdvancedConfig()
 
         # assemble plugin ui
-        self.add_careamics_banner("CAREamics UI for training N2N denoising models.")
+        self.add_careamics_banner(
+            "CAREamics UI for training Noise2Noise (N2N) denoising models."
+        )
         self.add_train_input_ui(use_target=self.careamics_config.needs_gt)
         self.add_config_ui()
         self.add_train_button_ui()

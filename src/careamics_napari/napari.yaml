@@ -4,13 +4,13 @@ contributions:
   commands:
     - id: careamics-napari.create_n2v
       python_name: careamics_napari.n2v_plugin:N2VPlugin
-      title: CAREamics N2V
+      title: Noise2Void (N2V)
     - id: careamics-napari.create_n2n
       python_name: careamics_napari.n2n_plugin:N2NPlugin
-      title: CAREamics N2N
+      title: Noise2Noise (N2N)
     - id: careamics-napari.create_care
       python_name: careamics_napari.care_plugin:CAREPlugin
-      title: CAREamics CARE
+      title: CARE
     - id: careamics-napari.data_SEM_N2V
       python_name: careamics_napari.sample_data:n2v_sem_data
       title: Noise2Void SEM
@@ -22,11 +22,11 @@ contributions:
       title: CARE U2OS
   widgets:
     - command: careamics-napari.create_n2v
-      display_name: CAREamics N2V
+      display_name: Noise2Void (N2V)
     - command: careamics-napari.create_n2n
-      display_name: CAREamics N2N
+      display_name: Noise2Noise (N2N)
     - command: careamics-napari.create_care
-      display_name: CAREamics CARE
+      display_name: CARE
   sample_data:
     - command: careamics-napari.data_SEM_N2V
       display_name: Download data for N2V (SEM)
