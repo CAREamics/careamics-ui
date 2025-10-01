@@ -94,7 +94,7 @@ class ConfigurationWidget(QGroupBox):
         formLayout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)  # type: ignore
         formLayout.addRow("Enable 3D", self.enable_3d_chkbox)
         formLayout.addRow(self.axes_widget.label.text(), self.axes_widget.text_field)
-        formLayout.addRow("N epochs", self.n_epochs_spin)
+        formLayout.addRow("# Epochs", self.n_epochs_spin)
         formLayout.addRow("Batch size", self.batch_size_spin)
         formLayout.addRow("Patch XY", self.patch_xy_spin)
         formLayout.addRow("Patch Z", self.patch_z_spin)
