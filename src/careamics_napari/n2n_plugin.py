@@ -12,7 +12,7 @@ else:
     _has_napari = True
 
 
-class CAREPlugin(BasePlugin):
+class N2NPlugin(BasePlugin):
     """CAREamics N2N plugin.
 
     Parameters
@@ -65,6 +65,6 @@ if __name__ == "__main__":
     # create a Viewer
     viewer = napari.Viewer()
     # add n2v plugin
-    viewer.window.add_dock_widget(CAREPlugin(viewer))
+    viewer.window.add_dock_widget(N2NPlugin(viewer))
     # start UI
     napari.run()
