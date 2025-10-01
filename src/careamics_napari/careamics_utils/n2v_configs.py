@@ -29,7 +29,7 @@ def get_default_n2v_config() -> BaseConfig:
     num_workers = get_num_workers()
 
     config = create_n2v_configuration(
-        experiment_name="careamics",
+        experiment_name="careamics_n2v",
         data_type="array",
         axes="YX",
         patch_size=[64, 64],

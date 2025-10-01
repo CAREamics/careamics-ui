@@ -3,6 +3,7 @@
 __all__ = [
     "AdvancedConfigurationWindow",
     "AxesWidget",
+    "CAREConfigurationWindow",
     "CAREamicsBanner",
     "ConfigurationWidget",
     "FolderWidget",
@@ -27,6 +28,7 @@ __all__ = [
 from .advanced_config import AdvancedConfigurationWindow
 from .axes_widget import AxesWidget
 from .banner_widget import CAREamicsBanner
+from .care_config_window import CAREConfigurationWindow
 from .folder_widget import FolderWidget
 from .gpu_widget import create_gpu_label
 from .magicgui_widgets import layer_choice, load_button

@@ -3,15 +3,18 @@
 __all__ = [
     "AdvancedConfig",
     "BaseConfig",
+    "CAREAdvancedConfig",
     "N2VAdvancedConfig",
     "UpdaterCallBack",
     "get_algorithm",
     "get_available_algorithms",
+    "get_default_care_config",
     "get_default_n2v_config",
 ]
 
 
 from .algorithms import get_algorithm, get_available_algorithms
 from .callback import UpdaterCallBack
+from .care_configs import CAREAdvancedConfig, get_default_care_config
 from .configs import AdvancedConfig, BaseConfig
 from .n2v_configs import N2VAdvancedConfig, get_default_n2v_config

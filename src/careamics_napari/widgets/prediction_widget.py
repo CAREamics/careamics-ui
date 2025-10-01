@@ -303,10 +303,12 @@ class PredictionWidget(QGroupBox):
             model_algo = careamist.cfg.get_algorithm_friendly_name()
             config_algo = self.configuration.get_algorithm_friendly_name()
             if model_algo != config_algo:
-                raise ValueError(
+                err_msg = (
                     f"The loaded model ({model_algo}) does not match "
-                    f"the current configuration ({config_algo})."
+                    + f"the current configuration ({config_algo})."
                 )
+                ntf.show_error(err_msg)
+                raise ValueError(err_msg)
 
             return careamist
 

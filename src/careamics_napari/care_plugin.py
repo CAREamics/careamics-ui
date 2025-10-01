@@ -1,8 +1,8 @@
 """N2V plugin."""
 
 from careamics_napari.base_plugin import BasePlugin
-from careamics_napari.careamics_utils import N2VAdvancedConfig, get_default_n2v_config
-from careamics_napari.widgets import N2VConfigurationWindow
+from careamics_napari.careamics_utils import CAREAdvancedConfig, get_default_care_config
+from careamics_napari.widgets import CAREConfigurationWindow
 
 try:
     import napari
@@ -12,8 +12,8 @@ else:
     _has_napari = True
 
 
-class N2VPlugin(BasePlugin):
-    """CAREamics N2V plugin.
+class CAREPlugin(BasePlugin):
+    """CAREamics CARE plugin.
 
     Parameters
     ----------
@@ -36,12 +36,12 @@ class N2VPlugin(BasePlugin):
         self.viewer = napari_viewer
 
         # create a n2v config
-        self.careamics_config = get_default_n2v_config()
+        self.careamics_config = get_default_care_config()
         # advanced n2v config
-        self.advanced_config = N2VAdvancedConfig()
+        self.advanced_config = CAREAdvancedConfig()
 
         # assemble plugin ui
-        self.add_careamics_banner("CAREamics UI for training N2V denoising models.")
+        self.add_careamics_banner("CAREamics UI for training CARE denoising models.")
         self.add_train_input_ui(use_target=self.careamics_config.needs_gt)
         self.add_config_ui()
         self.add_train_button_ui()
@@ -54,7 +54,7 @@ class N2VPlugin(BasePlugin):
         self.config_widget.axes_widget.update_config()
 
         # show window with advanced options
-        win = N2VConfigurationWindow(self, self.careamics_config, self.advanced_config)
+        win = CAREConfigurationWindow(self, self.careamics_config, self.advanced_config)
         win.finished.connect(lambda: print(self.advanced_config, self.careamics_config))
         win.show()
 
@@ -65,6 +65,6 @@ if __name__ == "__main__":
     # create a Viewer
     viewer = napari.Viewer()
     # add n2v plugin
-    viewer.window.add_dock_widget(N2VPlugin(viewer))
+    viewer.window.add_dock_widget(CAREPlugin(viewer))
     # start UI
     napari.run()
