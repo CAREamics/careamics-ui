@@ -9,7 +9,7 @@ from careamics import CAREamist
 from numpy.typing import NDArray
 from superqt.utils import thread_worker
 
-from careamics_napari.careamics_utils import BaseConfig
+from careamics_napari.careamics_utils import BaseConfig, PredictionStoppedException
 from careamics_napari.signals import (
     PredictionState,
     PredictionUpdate,
@@ -102,6 +102,13 @@ def _predict(
 
         if result is not None and len(result) > 0:
             update_queue.put(PredictionUpdate(PredictionUpdateType.SAMPLE, result))
+
+    except PredictionStoppedException:
+        # Handle user-requested stop
+        update_queue.put(
+            PredictionUpdate(PredictionUpdateType.STATE, PredictionState.STOPPED)
+        )
+        return
 
     except Exception as e:
         traceback.print_exc()

@@ -1,5 +1,4 @@
 import traceback
-from collections import deque
 from pathlib import Path
 from queue import Queue
 
@@ -241,6 +240,7 @@ class BasePlugin(QWidget):
                 self._training_queue,
                 self._prediction_queue,
                 self.careamist,
+                self.pred_status,
             )
             self.train_worker.yielded.connect(self._update_from_training)
             self.train_worker.start()
@@ -297,13 +297,10 @@ class BasePlugin(QWidget):
             self.pred_worker.start()
 
         elif state == PredictionState.STOPPED:
-            # exhaust the data fetcher to stop the prediction
-            if careamist.trainer.predict_loop._data_fetcher is not None:
-                deque(careamist.trainer.predict_loop._data_fetcher, maxlen=0)
-                careamist.trainer.predict_loop.reset()
-                self._prediction_queue.put(
-                    PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
-                )
+            # prediction stopped: reset the progress bar
+            self._prediction_queue.put(
+                PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
+            )
 
     def _on_careamist_loaded(self, careamist: CAREamist) -> None:
         """Event handler called when a CAREamics instance has been loaded."""

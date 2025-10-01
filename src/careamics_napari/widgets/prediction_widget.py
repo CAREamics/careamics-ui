@@ -17,7 +17,11 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
 )
 
-from careamics_napari.careamics_utils import BaseConfig, UpdaterCallBack
+from careamics_napari.careamics_utils import (
+    BaseConfig,
+    StopPredictionCallback,
+    UpdaterCallBack,
+)
 from careamics_napari.signals import (
     PredictionState,
     PredictionStatus,
@@ -293,7 +297,10 @@ class PredictionWidget(QGroupBox):
             careamist = CAREamist(
                 model_path,
                 work_dir=self.configuration.work_dir,
-                callbacks=[UpdaterCallBack(training_queue, self.prediction_queue)],
+                callbacks=[
+                    UpdaterCallBack(training_queue, self.prediction_queue),
+                    StopPredictionCallback(self.pred_status),
+                ],
             )
             # training is already done!
             # self.train_status.state = TrainingState.DONE
