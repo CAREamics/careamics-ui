@@ -1,12 +1,12 @@
-from careamics.config import create_care_configuration
+from careamics.config import create_n2n_configuration
 
 from careamics_napari.utils import get_num_workers
 
 from .configs import AdvancedConfig, BaseConfig
 
 
-class CAREAdvancedConfig(AdvancedConfig):
-    """CARE advanced configuration."""
+class N2NAdvancedConfig(AdvancedConfig):
+    """N2N advanced configuration."""
 
     n_channels_in: int = 1
     """Number of input channels."""
@@ -15,11 +15,11 @@ class CAREAdvancedConfig(AdvancedConfig):
     """Number of output channels."""
 
 
-def get_default_care_config() -> BaseConfig:
-    """Return a default CARE configuration."""
+def get_default_n2n_config() -> BaseConfig:
+    """Return a default N2N configuration."""
     num_workers = get_num_workers()
 
-    config = create_care_configuration(
+    config = create_n2n_configuration(
         experiment_name="careamics_care",
         data_type="array",
         axes="YX",

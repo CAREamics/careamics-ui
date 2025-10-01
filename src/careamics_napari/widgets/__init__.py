@@ -7,6 +7,7 @@ __all__ = [
     "CAREamicsBanner",
     "ConfigurationWidget",
     "FolderWidget",
+    "N2NConfigurationWindow",
     "N2VConfigurationWindow",
     "PowerOfTwoSpinBox",
     "PredictDataWidget",
@@ -32,6 +33,7 @@ from .care_config_window import CAREConfigurationWindow
 from .folder_widget import FolderWidget
 from .gpu_widget import create_gpu_label
 from .magicgui_widgets import layer_choice, load_button
+from .n2n_config_window import N2NConfigurationWindow
 from .n2v_config_window import N2VConfigurationWindow
 from .predict_data_widget import PredictDataWidget
 from .prediction_widget import PredictionWidget

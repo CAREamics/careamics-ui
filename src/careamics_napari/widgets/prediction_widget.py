@@ -264,8 +264,8 @@ class PredictionWidget(QGroupBox):
             careamist = self._load_model(selected_file)
             if careamist is None:
                 print(f"Error loading the model: {selected_file}")
-                if _has_napari:
-                    ntf.show_error(f"Error loading the model: {selected_file}")
+                # if _has_napari:
+                #     ntf.show_error(f"Error loading the model: {selected_file}")
                 return
             # sent the careamist to the parent window / plugin
             self.careamist_loaded.emit(careamist)
@@ -305,9 +305,10 @@ class PredictionWidget(QGroupBox):
             if model_algo != config_algo:
                 err_msg = (
                     f"The loaded model ({model_algo}) does not match "
-                    + f"the current configuration ({config_algo})."
+                    f"the current configuration ({config_algo})."
                 )
-                ntf.show_error(err_msg)
+                if _has_napari:
+                    ntf.show_error(err_msg)
                 raise ValueError(err_msg)
 
             return careamist

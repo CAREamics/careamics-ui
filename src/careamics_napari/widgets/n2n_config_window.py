@@ -7,7 +7,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from careamics_napari.careamics_utils import BaseConfig, CAREAdvancedConfig
+from careamics_napari.careamics_utils import BaseConfig, N2NAdvancedConfig
 from careamics_napari.widgets import AdvancedConfigurationWindow
 from careamics_napari.widgets.qt_widgets import (
     # create_double_spinbox,
@@ -16,14 +16,14 @@ from careamics_napari.widgets.qt_widgets import (
 from careamics_napari.widgets.utils import bind
 
 
-class CAREConfigurationWindow(AdvancedConfigurationWindow):
-    """A dialog widget for modifying CARE advanced settings."""
+class N2NConfigurationWindow(AdvancedConfigurationWindow):
+    """A dialog widget for modifying N2N advanced settings."""
 
     def __init__(
         self,
         parent: QWidget | None,
         careamics_config: BaseConfig,
-        algorithm_config: CAREAdvancedConfig,
+        algorithm_config: N2NAdvancedConfig,
     ) -> None:
         """Initialize the window.
 
@@ -79,7 +79,7 @@ class CAREConfigurationWindow(AdvancedConfigurationWindow):
         layout.addLayout(form)
 
         tab_widget.setLayout(layout)
-        self.tabs.addTab(tab_widget, "CARE")
+        self.tabs.addTab(tab_widget, "N2N")
 
     def save(self) -> None:
         """Save the current state of the UI into configurations."""
@@ -111,10 +111,10 @@ if __name__ == "__main__":
     from careamics_napari.careamics_utils import get_default_n2v_config
 
     config = get_default_n2v_config()
-    care_config = CAREAdvancedConfig()
+    n2n_config = N2NAdvancedConfig()
     # Create a QApplication instance
     app = QApplication(sys.argv)
-    widget = CAREConfigurationWindow(None, config, care_config)
+    widget = N2NConfigurationWindow(None, config, n2n_config)
     widget.show()
 
     sys.exit(app.exec_())
