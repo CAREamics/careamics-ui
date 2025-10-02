@@ -1,16 +1,12 @@
 """Training widget."""
 
-from typing import Optional
-
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QPushButton,
     QVBoxLayout,
-    QWidget,
 )
-from typing_extensions import Self
 
 from careamics_napari.signals import TrainingState, TrainingStatus
 
@@ -24,7 +20,7 @@ class TrainingWidget(QGroupBox):
         Training status.
     """
 
-    def __init__(self: Self, train_status: Optional[TrainingStatus] = None) -> None:
+    def __init__(self, train_status: TrainingStatus | None = None) -> None:
         """Initialize the widget.
 
         Parameters
@@ -32,41 +28,39 @@ class TrainingWidget(QGroupBox):
         train_status : TrainingStatus or None, default=None
             Training status.
         """
-        super().__init__()  # TODO needed? and in the other classes? to pass parent?
+        super().__init__()
 
         self.train_status = (
             TrainingStatus() if train_status is None else train_status  # type: ignore
         )
 
-        self.setTitle("Train")
-        self.setLayout(QVBoxLayout())
+        # TODO add val percentage and val minimum ?
 
-        # train buttons
-        train_buttons = QWidget()
-        train_buttons.setLayout(QHBoxLayout())
-
+        # train button
         self.train_button = QPushButton("Train", self)
         self.train_button.setMinimumWidth(120)
+        self.train_button.clicked.connect(self._train_stop_clicked)
 
+        # reset button
         self.reset_model_button = QPushButton("Reset", self)
         self.reset_model_button.setMinimumWidth(120)
         self.reset_model_button.setEnabled(False)
         self.reset_model_button.setToolTip(
             "Reset the weights of the model (forget the training)"
         )
+        self.reset_model_button.clicked.connect(self._reset_clicked)
 
-        train_buttons.layout().addWidget(self.train_button, alignment=Qt.AlignLeft)
-        train_buttons.layout().addWidget(self.reset_model_button, alignment=Qt.AlignLeft)
-        self.layout().addWidget(train_buttons)
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.train_button, alignment=Qt.AlignLeft)  # type: ignore
+        hbox.addWidget(self.reset_model_button, alignment=Qt.AlignLeft)  # type: ignore
 
-        # actions
-        if self.train_status is not None:
-            # what to do when the buttons are clicked
-            self.train_button.clicked.connect(self._train_stop_clicked)
-            self.reset_model_button.clicked.connect(self._reset_clicked)
+        vbox = QVBoxLayout()
+        vbox.addLayout(hbox)
+        self.setLayout(vbox)
+        self.setTitle("Train")
 
-            # listening to the signal
-            self.train_status.events.state.connect(self._update_button)
+        # listening to the training status events
+        self.train_status.events.state.connect(self._update_button)
 
     def _train_stop_clicked(self) -> None:
         """Update the UI and training status when the train button is clicked."""
@@ -75,20 +69,19 @@ class TrainingWidget(QGroupBox):
                 self.train_status.state == TrainingState.IDLE
                 or self.train_status.state == TrainingState.DONE
             ):
-                self.train_status.state = TrainingState.TRAINING
-                self.reset_model_button.setEnabled(False)
-                self.reset_model_button.setText("")
+                # important to do it before state change
                 self.train_button.setText("Stop")
+                self.reset_model_button.setEnabled(False)
+                self.train_status.state = TrainingState.TRAINING
 
             elif self.train_status.state == TrainingState.TRAINING:
-                self.train_status.state = TrainingState.STOPPED
                 self.train_button.setText("Train")
                 self.reset_model_button.setEnabled(True)
-                self.reset_model_button.setText("Reset")
+                self.train_status.state = TrainingState.STOPPED
 
             elif self.train_status.state == TrainingState.STOPPED:
-                self.train_status.state = TrainingState.TRAINING
                 self.train_button.setText("Stop")
+                self.train_status.state = TrainingState.TRAINING
 
     def _reset_clicked(self) -> None:
         """Update the UI and training status when the reset button is clicked."""
@@ -109,7 +102,6 @@ class TrainingWidget(QGroupBox):
         if new_state == TrainingState.DONE or new_state == TrainingState.STOPPED:
             self.train_button.setText("Train")
             self.reset_model_button.setEnabled(True)
-            self.reset_model_button.setText("Reset")
         elif new_state == TrainingState.CRASHED:
             self._reset_clicked()
 

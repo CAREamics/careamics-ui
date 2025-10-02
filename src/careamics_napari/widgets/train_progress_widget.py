@@ -1,14 +1,12 @@
 """A widget displaying the training progress using two progress bars."""
 
-from typing import Optional
-
 from qtpy.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
 )
-from typing_extensions import Self
 
-from careamics_napari.signals import TrainingSignal, TrainingState, TrainingStatus
+from careamics_napari.careamics_utils import BaseConfig
+from careamics_napari.signals import TrainingState, TrainingStatus
 from careamics_napari.widgets import TBPlotWidget, create_progressbar
 
 
@@ -17,40 +15,40 @@ class TrainProgressWidget(QGroupBox):
 
     Parameters
     ----------
+    careamics_config : Configuration
+            careamics configuration object.
     train_status : TrainingStatus or None, default=None
         Signal representing the training status.
-    train_config : TrainingSignal or None, default=None
-        Signal representing the training parameters.
     """
 
     def __init__(
-        self: Self,
-        train_status: Optional[TrainingStatus] = None,
-        train_config: Optional[TrainingSignal] = None,
+        self,
+        careamics_config: BaseConfig,
+        train_status: TrainingStatus | None = None,
     ) -> None:
         """Initialize the widget.
 
         Parameters
         ----------
+        careamics_config : Configuration
+            careamics configuration object.
         train_status : TrainingStatus or None, default=None
             Signal representing the training status.
-        train_config : TrainingSignal or None, default=None
-            Signal representing the training parameters.
         """
         super().__init__()
 
+        self.configuration = careamics_config
         self.train_status = (
             train_status
             if train_status is not None  # for typing purposes
             else TrainingStatus()  # type: ignore
         )
 
-        self.setTitle("Training progress")
-        self.setLayout(QVBoxLayout())
+        self.setTitle("Training Progress")
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 0)
 
         # progress bars
-        self.layout().setContentsMargins(20, 20, 20, 0)
-
         self.pb_epochs = create_progressbar(
             max_value=self.train_status.max_epochs,
             text_format=f"Epoch ?/{self.train_status.max_epochs}",
@@ -63,26 +61,28 @@ class TrainProgressWidget(QGroupBox):
             value=0,
         )
 
-        self.layout().addWidget(self.pb_epochs)
-        self.layout().addWidget(self.pb_batch)
-
         # plot widget
         self.plot = TBPlotWidget(
-            max_width=300, max_height=300, min_height=250, train_signal=train_config
+            max_width=300,
+            max_height=300,
+            min_height=250,
+            work_dir=self.configuration.work_dir,
         )
-        self.layout().addWidget(self.plot.native)
 
-        # actions
-        if self.train_status is not None:
-            self.train_status.events.state.connect(self._update_training_state)
+        layout.addWidget(self.pb_epochs)
+        layout.addWidget(self.pb_batch)
+        layout.addWidget(self.plot.native)
+        self.setLayout(layout)
 
-            self.train_status.events.epoch_idx.connect(self._update_epoch)
-            self.train_status.events.max_epochs.connect(self._update_max_epoch)
-            self.train_status.events.batch_idx.connect(self._update_batch)
-            self.train_status.events.max_batches.connect(self._update_max_batch)
-            self.train_status.events.val_loss.connect(self._update_loss)
+        # set actions based on the training status
+        self.train_status.events.state.connect(self._update_training_state)
+        self.train_status.events.epoch_idx.connect(self._update_epoch)
+        self.train_status.events.max_epochs.connect(self._update_max_epoch)
+        self.train_status.events.batch_idx.connect(self._update_batch)
+        self.train_status.events.max_batches.connect(self._update_max_batch)
+        self.train_status.events.val_loss.connect(self._update_loss)
 
-    def _update_training_state(self: Self, state: TrainingState) -> None:
+    def _update_training_state(self, state: TrainingState) -> None:
         """Update the widget according to the training state.
 
         Parameters
@@ -93,7 +93,7 @@ class TrainProgressWidget(QGroupBox):
         if state == TrainingState.IDLE or state == TrainingState.TRAINING:
             self.plot.clear_plot()
 
-    def _update_max_epoch(self: Self, max_epoch: int):
+    def _update_max_epoch(self, max_epoch: int):
         """Update the maximum number of epochs in the progress bar.
 
         Parameters
@@ -103,7 +103,7 @@ class TrainProgressWidget(QGroupBox):
         """
         self.pb_epochs.setMaximum(max_epoch)
 
-    def _update_epoch(self: Self, epoch: int) -> None:
+    def _update_epoch(self, epoch: int) -> None:
         """Update the epoch progress bar.
 
         Parameters
@@ -112,9 +112,9 @@ class TrainProgressWidget(QGroupBox):
             Current epoch.
         """
         self.pb_epochs.setValue(epoch + 1)
-        self.pb_epochs.setFormat(f"Epoch {epoch+1}/{self.train_status.max_epochs}")
+        self.pb_epochs.setFormat(f"Epoch {epoch + 1}/{self.train_status.max_epochs}")
 
-    def _update_max_batch(self: Self, max_batches: int) -> None:
+    def _update_max_batch(self, max_batches: int) -> None:
         """Update the maximum number of batches in the progress bar.
 
         Parameters
@@ -124,14 +124,14 @@ class TrainProgressWidget(QGroupBox):
         """
         self.pb_batch.setMaximum(max_batches)
 
-    def _update_batch(self: Self) -> None:
+    def _update_batch(self) -> None:
         """Update the batch progress bar."""
         self.pb_batch.setValue(self.train_status.batch_idx + 1)
         self.pb_batch.setFormat(
-            f"Batch {self.train_status.batch_idx+1}/{self.train_status.max_batches}"
+            f"Batch {self.train_status.batch_idx + 1}/{self.train_status.max_batches}"
         )
 
-    def _update_loss(self: Self) -> None:
+    def _update_loss(self) -> None:
         """Update the loss plot."""
         self.plot.update_plot(
             epoch=self.train_status.epoch_idx,
@@ -141,21 +141,17 @@ class TrainProgressWidget(QGroupBox):
 
 
 if __name__ == "__main__":
-    import sys
+    # import sys
+    import napari
 
-    from qtpy.QtWidgets import QApplication
+    # from qtpy.QtWidgets import QApplication
+    from careamics_napari.careamics_utils import get_default_n2v_config
 
-    # Create a QApplication instance
-    app = QApplication(sys.argv)
-
-    # create signal
-    signal = TrainingStatus()  # type: ignore
-
-    # Instantiate widget
-    widget = TrainProgressWidget(signal)
-
-    # Show the widget
-    widget.show()
-
-    # Run the application event loop
-    sys.exit(app.exec_())
+    config = get_default_n2v_config()
+    # app = QApplication(sys.argv)
+    # widget = TrainProgressWidget(config)
+    # widget.show()
+    # sys.exit(app.exec_())
+    viewer = napari.Viewer()
+    viewer.window.add_dock_widget(TrainProgressWidget(config))
+    napari.run()

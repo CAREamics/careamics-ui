@@ -1,7 +1,6 @@
 """Various pure Qt widgets."""
 
 import math
-from typing import Optional
 
 from qtpy.QtWidgets import (
     QDoubleSpinBox,
@@ -160,7 +159,7 @@ def create_double_spinbox(
     value: float = 0.5,
     step: float = 0.1,
     visible: bool = True,
-    tooltip: Optional[str] = None,
+    tooltip: str | None = None,
     n_decimal: int = 1,
 ) -> DoubleSpinBox:
     """Create a double-typed spin box.
@@ -195,8 +194,8 @@ def create_double_spinbox(
     spin_box.setValue(value)
     spin_box.setVisible(visible)
     spin_box.setToolTip(tooltip)
-    spin_box.setMinimumHeight(50)
-    spin_box.setContentsMargins(0, 3, 0, 3)
+    spin_box.setMinimumHeight(25)
+    # spin_box.setContentsMargins(0, 3, 0, 3)
     return spin_box
 
 
@@ -206,7 +205,7 @@ def create_int_spinbox(
     value: int = 2,
     step: int = 1,
     visible: bool = True,
-    tooltip: Optional[str] = None,
+    tooltip: str | None = None,
 ) -> SpinBox:
     """Create an integer-typed spin box.
 
@@ -237,8 +236,8 @@ def create_int_spinbox(
     spin_box.setValue(value)
     spin_box.setVisible(visible)
     spin_box.setToolTip(tooltip)
-    spin_box.setMinimumHeight(50)
-    spin_box.setContentsMargins(0, 3, 0, 3)
+    spin_box.setMinimumHeight(25)
+    # spin_box.setContentsMargins(0, 3, 0, 3)
 
     return spin_box
 
@@ -250,7 +249,7 @@ def create_progressbar(
     text_visible: bool = True,
     visible: bool = True,
     text_format: str = f"Epoch ?/{100}",
-    tooltip: Optional[str] = None,
+    tooltip: str | None = None,
 ) -> QProgressBar:
     """Create a progress bar.
 
