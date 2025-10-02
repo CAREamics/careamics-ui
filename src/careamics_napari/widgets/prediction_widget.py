@@ -302,8 +302,6 @@ class PredictionWidget(QGroupBox):
                     StopPredictionCallback(self.pred_status),
                 ],
             )
-            # training is already done!
-            # self.train_status.state = TrainingState.DONE
 
             # check the loaded model algorithm
             # to be compatible with the current configuration

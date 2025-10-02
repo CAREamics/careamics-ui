@@ -309,6 +309,8 @@ class BasePlugin(QWidget):
             f"CAREamics instance loaded: "
             f"{self.careamist_loaded.cfg.get_algorithm_friendly_name()}"
         )
+        if _has_napari:
+            ntf.show_info("CAREamics model loaded successfully!")
 
     def _model_selection_changed(self, from_disk: bool) -> None:
         """Event handler called when user changed the model selection."""
