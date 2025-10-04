@@ -4,9 +4,11 @@ from queue import Queue
 
 import numpy as np
 from careamics import CAREamist
+from careamics.model_io.bioimage.cover_factory import create_cover
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QVBoxLayout, QWidget
 
+from careamics_napari.bmz import BMZExportWidget
 from careamics_napari.careamics_utils import get_default_n2v_config
 from careamics_napari.signals import (
     ExportType,
@@ -179,8 +181,8 @@ class BasePlugin(QWidget):
         name = f"{algo_name}_{dims}_{self.careamics_config.experiment_name}"
 
         try:
-            if export_type == ExportType.BMZ:
-                raise NotImplementedError("Export to BMZ not implemented yet (but soon).")
+            if export_type == ExportType.BMZ.value:
+                self._prepare_export_to_bmz(destination, name)
             else:
                 name = name + ".ckpt"
                 self.careamist.trainer.save_checkpoint(
@@ -402,6 +404,84 @@ class BasePlugin(QWidget):
                     self.viewer.add_image(samples, name="Prediction")
             else:
                 self.pred_status.update(update)
+
+    def _show_bmz_dialog(
+        self, bmz_path: Path, cover: Path, sample_input: np.ndarray
+    ) -> None:
+        """Show the BMZ export dialog window."""
+        # ask user for bmz model specs
+        bmz_window = BMZExportWidget(self, cover_image_path=cover)
+        bmz_window.finished.connect(
+            lambda: self._export_to_bmz(bmz_window, bmz_path, sample_input)
+        )
+        bmz_window.show()
+
+    def _prepare_export_to_bmz(self, destination: Path, name: str) -> None:
+        """Export the trained model to BMZ format."""
+        if self.careamist is None:
+            if _has_napari:
+                ntf.show_info("No trained model is available for exporting.")
+            return
+
+        bmz_path = destination.joinpath(name + ".zip")
+
+        data_sources = self.input_data_widget.get_data_sources()
+        if data_sources is not None:
+            train_data = data_sources["train"][0]
+            if not isinstance(train_data, np.ndarray):
+                raise NotImplementedError(
+                    "BMZ export from tiff data source is not implemented yet."
+                )
+        if train_data.ndim == 2:
+            sample_input = train_data[:256, :256]
+        else:
+            sample_input = train_data[0, :256, :256]
+
+        # make a default cover image
+        output_patches = self.careamist.predict(
+            sample_input,
+            data_type="array",
+            tta_transforms=False,
+        )
+        sample_output = np.concatenate(output_patches, axis=0)
+        cover_path = create_cover(
+            directory=self.careamics_config.work_dir,
+            array_in=sample_input[np.newaxis, np.newaxis, ...],
+            array_out=sample_output,
+        )
+
+        # show the bmz export dialog
+        self._show_bmz_dialog(bmz_path, cover_path, sample_input)
+
+    def _export_to_bmz(
+        self, bmz_window: BMZExportWidget, bmz_path: Path, sample_input: np.ndarray
+    ) -> None:
+        bmz_data = {
+            "model_name": bmz_window.model_name,
+            "description": bmz_window.general_description,
+            "data_description": bmz_window.data_description,
+            "authors": bmz_window.authors,
+            "cover": bmz_window.cover_image,
+        }
+
+        try:
+            self.careamist.export_to_bmz(  # type: ignore
+                path_to_archive=bmz_path,
+                input_array=sample_input,
+                friendly_model_name=bmz_data["model_name"],
+                general_description=bmz_data["description"],
+                data_description=bmz_data["data_description"],
+                authors=bmz_data["authors"],
+                covers=[bmz_data["cover"]],
+            )
+            print(f"Model exported at {bmz_path}")
+            if _has_napari:
+                ntf.show_info(f"Model exported at {bmz_path}")
+
+        except Exception as e:
+            traceback.print_exc()
+            if _has_napari:
+                ntf.show_error(str(e))
 
     def closeEvent(self, event) -> None:
         """Close the plugin.

@@ -18,6 +18,7 @@ __all__ = [
     "TrainDataWidget",
     "TrainProgressWidget",
     "TrainingWidget",
+    "bind",
     "create_double_spinbox",
     "create_gpu_label",
     "create_int_spinbox",
@@ -50,3 +51,4 @@ from .train_data_widget import TrainDataWidget
 from .train_progress_widget import TrainProgressWidget
 from .training_configuration_widget import ConfigurationWidget
 from .training_widget import TrainingWidget
+from .utils import bind
