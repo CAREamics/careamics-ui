@@ -33,7 +33,7 @@ class CAREConfigurationWindow(AdvancedConfigurationWindow):
             Parent widget.
         careamics_config : BaseConfig
             Careamics configuration object.
-        algorithm_config : N2VAdvancedConfig
+        algorithm_config : CAREAdvancedConfig
             CARE advanced configuration object.
         """
         super().__init__(parent, careamics_config, algorithm_config)
@@ -89,7 +89,10 @@ class CAREConfigurationWindow(AdvancedConfigurationWindow):
 
     def bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""
+        # bind the properties from the base class first
         super().bind_properties()
+        # type(self) returns the class of the instance, so we are adding
+        # properties to the class itself, not the instance.
         type(self).in_channels = bind(self.num_channels_in_spin, "value")
         type(self).out_channels = bind(self.num_channels_out_spin, "value")
 

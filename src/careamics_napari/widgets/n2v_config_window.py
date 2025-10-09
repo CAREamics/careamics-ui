@@ -110,7 +110,12 @@ class N2VConfigurationWindow(AdvancedConfigurationWindow):
 
     def bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""
+        # bind the properties from the base class first
         super().bind_properties()
+        # type(self) returns the class of the instance, so we are adding
+        # properties to the class itself, not the instance.
+        # e.g. when self.n2v2_chkbox is changed,
+        # self.use_n2v2 will be updated automatically.
         type(self).use_n2v2 = bind(self.n2v2_chkbox, "checked")
         type(self).roi_size = bind(self.roi_spin, "value")
         type(self).masked_pixel_percentage = bind(self.masked_percentage_spin, "value")

@@ -241,6 +241,8 @@ class PredictionWidget(QGroupBox):
 
     def _bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""
+        # type(self) returns the class of the instance, so we are adding
+        # properties to the class itself, not the instance.
         # to check if should use a loaded model
         type(self).load_from_disk = bind(self.from_disk_radiobutton, "checked", False)
         # tiling
@@ -251,6 +253,8 @@ class PredictionWidget(QGroupBox):
         type(self).tile_size_z = bind(self.tile_size_z_spin, "value", 8)
         # batch size
         type(self).batch_size = bind(self.batch_size_spin, "value", 1)
+        # for example when self.batch_size_spin value is changed,
+        # self.batch_size will be updated automatically.
 
     def _model_selection_changed(self) -> None:
         """Update model selection ui."""
