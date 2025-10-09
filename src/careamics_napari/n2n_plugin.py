@@ -35,9 +35,9 @@ class N2NPlugin(BasePlugin):
         super().__init__(napari_viewer)
         self.viewer = napari_viewer
 
-        # create a n2v config
+        # create a n2n config
         self.careamics_config = get_default_n2n_config()
-        # advanced n2v config
+        # advanced n2n config
         self.advanced_config = N2NAdvancedConfig()
 
         # assemble plugin ui

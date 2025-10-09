@@ -78,7 +78,7 @@ class BasePlugin(QWidget):
         self._training_queue: Queue = Queue(10)
         self._prediction_queue: Queue = Queue(10)
 
-        # changes from the training, prediction or saving state
+        # changes from the training and prediction
         self.train_status.events.state.connect(self._training_state_changed)
         self.pred_status.events.state.connect(self._prediction_state_changed)
 
