@@ -149,37 +149,21 @@ class ConfigurationWidget(QGroupBox):
 
     def _bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""
+        # type(self) returns the class of the instance, so we are adding
+        # properties to the class itself, not the instance.
         # is 3D
-        type(self).is_3D = bind(
-            self.enable_3d_chkbox, "checked", self.configuration.is_3D
-        )
+        type(self).is_3D = bind(self.enable_3d_chkbox, "checked")
         # number of epochs
         if self.configuration.training_config.lightning_trainer_config is not None:
-            type(self).num_epochs = bind(
-                self.n_epochs_spin,
-                "value",
-                self.configuration.training_config.lightning_trainer_config["max_epochs"],
-            )
+            type(self).num_epochs = bind(self.n_epochs_spin, "value")
 
         if isinstance(self.configuration.data_config, DataConfig):
             # batch size
-            type(self).batch_size = bind(
-                self.batch_size_spin, "value", self.configuration.data_config.batch_size
-            )
+            type(self).batch_size = bind(self.batch_size_spin, "value")
             # XY patch size
-            type(self).patch_xy_size = bind(
-                self.patch_xy_spin,
-                "value",
-                self.configuration.data_config.patch_size[-2:],
-            )
+            type(self).patch_xy_size = bind(self.patch_xy_spin, "value")
             # Z patch size
-            type(self).patch_z_size = bind(
-                self.patch_z_spin,
-                "value",
-                self.configuration.data_config.patch_size[0]
-                if self.configuration.is_3D
-                else None,
-            )
+            type(self).patch_z_size = bind(self.patch_z_spin, "value")
 
 
 if __name__ == "__main__":

@@ -63,7 +63,7 @@ repository = "https://github.com/CAREamics/careamics-napari"
 # https://beta.ruff.rs/docs
 [tool.ruff]
 line-length = 90
-target-version ="py310"
+target-version ="py311"
 src = ["src"]
 lint.select = [
     "E",  # style errors

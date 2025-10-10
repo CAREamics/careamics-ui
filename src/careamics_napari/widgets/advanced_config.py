@@ -215,7 +215,9 @@ class AdvancedConfigurationWindow(QDialog):
         # self.close()  # should be closed in a subclass
 
     def bind_properties(self) -> None:
-        """Create and bind the properties to the UI elements."""
+        """Create and bind class properties to the UI elements."""
+        # type(self) returns the class of the instance, so we are adding
+        # properties to the class itself, not the instance.
         type(self).experiment_name = bind(self.experiment_txtbox, "text")
         type(self).val_percentage = bind(self.val_perc_spin, "value")
         type(self).val_split = bind(self.val_split_spin, "value")

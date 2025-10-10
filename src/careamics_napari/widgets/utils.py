@@ -10,7 +10,13 @@ def bind(
     default_value: Any | None = None,
     validation_fn: Callable | None = None,
 ) -> property:
-    """Returns a property binding to the given widget property.
+    """Returns a property bound to the given widget.
+
+    This can be used as a general way to bind a widget property to a class property.
+    So that when the class property is accessed, it gets the value from the widget,
+    and when the class property is set, it sets the value in the widget.
+    In this way, we don't need to watch for widget's value changed signals
+    to update the class attributes.
 
     Parameters
     ----------
@@ -22,7 +28,8 @@ def bind(
             The default value to be used when the widget value is not valid.
             Defaults to None.
         validation_fn: Callable (optional)
-        The validation function (must return a boolean). Defaults to None.
+        The validation function to check if the widget value is valid
+        (must return a boolean). Defaults to None.
 
     Returns
     -------
