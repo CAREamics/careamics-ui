@@ -62,8 +62,8 @@ repository = "https://github.com/CAREamics/careamics-napari"
 
 # https://beta.ruff.rs/docs
 [tool.ruff]
-line-length = 88
-target-version = "py39"
+line-length = 90
+target-version ="py311"
 src = ["src"]
 lint.select = [
     "E",  # style errors
@@ -104,7 +104,7 @@ convention = "numpy"
 "setup.py" = ["D"]
 
 [tool.black]
-line-length = 88
+line-length = 90
 
 # https://mypy.readthedocs.io/en/stable/config_file.html
 [tool.mypy]

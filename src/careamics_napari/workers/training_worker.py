@@ -4,42 +4,42 @@ import traceback
 from collections.abc import Generator
 from queue import Queue
 from threading import Thread
-from typing import Optional
 
 import napari.utils.notifications as ntf
+import numpy as np
 from careamics import CAREamist
-from careamics.config.support import SupportedAlgorithm
 from superqt.utils import thread_worker
 
-from careamics_napari.careamics_utils import UpdaterCallBack
-from careamics_napari.careamics_utils.configuration import create_configuration
+from careamics_napari.careamics_utils import (
+    BaseConfig,
+    StopPredictionCallback,
+    UpdaterCallBack,
+)
 from careamics_napari.signals import (
     PredictionStatus,
-    TrainingSignal,
     TrainingState,
     TrainUpdate,
     TrainUpdateType,
 )
-from careamics_napari.utils.prediction_callback import StopPredictionCallback
 
 
-# TODO register CAREamist to continue training and predict
-# TODO how to load pre-trained?
-# TODO pass careamist here if it already exists?
 @thread_worker
 def train_worker(
-    train_config_signal: TrainingSignal,
+    configuration: BaseConfig,
+    data_sources: dict[str, list],
     training_queue: Queue,
     predict_queue: Queue,
-    careamist: Optional[CAREamist] = None,
-    pred_status: Optional[PredictionStatus] = None,
+    careamist: CAREamist | None = None,
+    pred_status: PredictionStatus | None = None,
 ) -> Generator[TrainUpdate, None, None]:
     """Model training worker.
 
     Parameters
     ----------
-    train_config_signal : TrainingSignal
-        Training signal.
+    configuration : BaseConfig
+        careamics configuration.
+    data_sources : dict[str, list]
+        Train and validation data sources.
     training_queue : Queue
         Training update queue.
     predict_queue : Queue
@@ -58,7 +58,8 @@ def train_worker(
     training = Thread(
         target=_train,
         args=(
-            train_config_signal,
+            configuration,
+            data_sources,
             training_queue,
             predict_queue,
             careamist,
@@ -96,18 +97,21 @@ def _push_exception(queue: Queue, e: Exception) -> None:
 
 
 def _train(
-    config_signal: TrainingSignal,
+    configuration: BaseConfig,
+    data_sources: dict[str, list],
     training_queue: Queue,
     predict_queue: Queue,
-    careamist: Optional[CAREamist] = None,
-    pred_status: Optional[PredictionStatus] = None,
+    careamist: CAREamist | None = None,
+    pred_status: PredictionStatus | None = None,
 ) -> None:
     """Run the training.
 
     Parameters
     ----------
-    config_signal : TrainingSignal
-        Training signal.
+    configuration : BaseConfig
+        careamics configuration.
+    data_sources : dict[str, list]
+        Train and validation data sources.
     training_queue : Queue
         Training update queue.
     predict_queue : Queue
@@ -117,23 +121,45 @@ def _train(
     pred_status : PredictionStatus or None, default=None
         Prediction status for stop callback.
     """
-    # get configuration and queue
-    try:
-        # create_configuration can raise an exception
-        config = create_configuration(config_signal)
+    train_data = data_sources["train"][0]
+    val_data = data_sources["val"][0]
+    train_target = None
+    val_target = None
+    # check if target data is available
+    if len(data_sources["train"]) > 1:
+        train_target = data_sources["train"][1]
+    if len(data_sources["val"]) > 1:
+        val_target = data_sources["val"][1]
 
-        # Create CAREamist
+    # if the train and validation data are the same
+    if np.array_equal(train_data, val_data):
+        val_data = None
+        val_target = None
+
+    # check if algorithm needs GT and it's available
+    if configuration.needs_gt and train_target is None:
+        _push_exception(
+            training_queue,
+            ValueError("Training target (GT) is required but wasn't provided."),
+        )
+
+    try:
+        # create / update CAREamist
         if careamist is None:
-            callbacks = [UpdaterCallBack(training_queue, predict_queue)]
+            callbacks: list = [UpdaterCallBack(training_queue, predict_queue)]
             if pred_status is not None:
                 callbacks.append(StopPredictionCallback(pred_status))
-            careamist = CAREamist(config, callbacks=callbacks)
 
+            careamist = CAREamist(
+                configuration, callbacks=callbacks, work_dir=configuration.work_dir
+            )
         else:
             # only update the number of epochs
-            careamist.cfg.training_config.num_epochs = config.training_config.num_epochs
-
-            if config_signal.layer_val == "" and config_signal.path_val == "":
+            if configuration.training_config.lightning_trainer_config:
+                configuration.training_config.lightning_trainer_config["max_epochs"] = (
+                    configuration.training_config.lightning_trainer_config["max_epochs"]
+                )
+            if val_data is None:
                 ntf.show_error(
                     "Continuing training is currently not supported without explicitely "
                     "passing validation. The reason is that otherwise, the data used for "
@@ -142,138 +168,24 @@ def _train(
                 )
     except Exception as e:
         traceback.print_exc()
-
         training_queue.put(TrainUpdate(TrainUpdateType.EXCEPTION, e))
 
-    # Register CAREamist
+    # register CAREamist
     training_queue.put(TrainUpdate(TrainUpdateType.CAREAMIST, careamist))
 
-    # Format data
-    train_data_target = None
-    val_data_target = None
-
-    if config_signal.load_from_disk:
-
-        if config_signal.path_train == "":
-            _push_exception(training_queue, ValueError("Training data path is empty."))
-            return
-
-        train_data = config_signal.path_train
-        val_data = config_signal.path_val if config_signal.path_val != "" else None
-
-        if train_data == val_data:
-            val_data = None
-
-        if config_signal.algorithm != SupportedAlgorithm.N2V:
-            if config_signal.path_train_target == "":
-                _push_exception(
-                    training_queue, ValueError("Training target data path is empty.")
-                )
-                return
-
-            train_data_target = config_signal.path_train_target
-
-            if val_data is not None:
-                val_data_target = (
-                    config_signal.path_val_target
-                    if config_signal.path_val_target != ""
-                    else None
-                )
-
-    else:
-        if config_signal.layer_train is None:
-            _push_exception(
-                training_queue, ValueError("Training layer has not been selected.")
+    # train CAREamist
+    if careamist is not None:
+        try:
+            careamist.train(
+                train_source=train_data,
+                val_source=val_data,
+                train_target=train_target,
+                val_target=val_target,
+                val_minimum_split=configuration.val_minimum_split,
+                val_percentage=configuration.val_percentage,
             )
-            return
-
-        elif config_signal.layer_train.data is None:
-            _push_exception(
-                training_queue,
-                ValueError(
-                    f"Training layer {config_signal.layer_train.name} is empty."
-                ),
-            )
-            return
-        else:
-            train_data = config_signal.layer_train.data
-
-        val_data = (
-            config_signal.layer_val.data
-            if config_signal.layer_val is not None
-            and config_signal.layer_val.data is not None
-            else None
-        )
-
-        if (
-            config_signal.layer_train is not None
-            and config_signal.layer_val is not None
-            and (config_signal.layer_train.name == config_signal.layer_val.name)
-        ):
-            val_data = None
-
-        if config_signal.algorithm != SupportedAlgorithm.N2V:
-
-            if config_signal.layer_train_target is None:
-                _push_exception(
-                    training_queue,
-                    ValueError("Training target layer has not been selected."),
-                )
-                return
-            elif config_signal.layer_train_target.data is None:
-                _push_exception(
-                    training_queue,
-                    ValueError(
-                        f"Training target layer {config_signal.layer_train_target.name}"
-                        f" is empty."
-                    ),
-                )
-                return
-            else:
-                train_data_target = config_signal.layer_train_target.data
-
-            if val_data is not None:
-                val_data_target = (
-                    config_signal.layer_val_target.data
-                    if config_signal.layer_val_target is not None
-                    and config_signal.layer_val_target.data is not None
-                    else None
-                )
-            else:
-                val_data_target = None
-
-    # TODO add val percentage and val minimum
-    # Train CAREamist
-    try:
-        careamist.train(
-            train_source=train_data,
-            val_source=val_data,
-            train_target=train_data_target,
-            val_target=val_data_target,
-            val_minimum_split=config_signal.val_minimum_split,
-            val_percentage=config_signal.val_percentage,
-        )
-
-        # # TODO can we use this to monkey patch the training process?
-        # update_queue.put(Update(UpdateType.MAX_EPOCH, 10_000 // 10))
-        # update_queue.put(Update(UpdateType.MAX_BATCH, 10_000))
-        # for i in range(10_000):
-
-        #     # if stopper.stop:
-        #     #     update_queue.put(Update(UpdateType.STATE, TrainingState.STOPPED))
-        #     #     break
-
-        #     if i % 10 == 0:
-        #         update_queue.put(Update(UpdateType.EPOCH, i // 10))
-        #         print(i)
-
-        #     update_queue.put(Update(UpdateType.BATCH, i))
-
-        #     time.sleep(0.2)
-
-    except Exception as e:
-        traceback.print_exc()
-
-        training_queue.put(TrainUpdate(TrainUpdateType.EXCEPTION, e))
+        except Exception as e:
+            traceback.print_exc()
+            training_queue.put(TrainUpdate(TrainUpdateType.EXCEPTION, e))
 
     training_queue.put(TrainUpdate(TrainUpdateType.STATE, TrainingState.DONE))

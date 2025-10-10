@@ -2,12 +2,15 @@ name: careamics-napari
 display_name: CAREamics
 contributions:
   commands:
-    - id: careamics-napari.make_train_widget
-      python_name: careamics_napari.training_plugin:TrainPluginWrapper
-      title: Train CAREamics
-    - id: careamics-napari.make_prediction_widget
-      python_name: careamics_napari.prediction_plugin:PredictionPluginWrapper
-      title: Predict CAREamics
+    - id: careamics-napari.create_n2v
+      python_name: careamics_napari.n2v_plugin:N2VPlugin
+      title: Noise2Void (N2V)
+    - id: careamics-napari.create_n2n
+      python_name: careamics_napari.n2n_plugin:N2NPlugin
+      title: Noise2Noise (N2N)
+    - id: careamics-napari.create_care
+      python_name: careamics_napari.care_plugin:CAREPlugin
+      title: CARE
     - id: careamics-napari.data_SEM_N2V
       python_name: careamics_napari.sample_data:n2v_sem_data
       title: Noise2Void SEM
@@ -18,10 +21,12 @@ contributions:
       python_name: careamics_napari.sample_data:care_u2os_data
       title: CARE U2OS
   widgets:
-    - command: careamics-napari.make_train_widget
-      display_name: Train CAREamics
-    - command: careamics-napari.make_prediction_widget
-      display_name: Predict CAREamics
+    - command: careamics-napari.create_n2v
+      display_name: Noise2Void (N2V)
+    - command: careamics-napari.create_n2n
+      display_name: Noise2Noise (N2N)
+    - command: careamics-napari.create_care
+      display_name: CARE
   sample_data:
     - command: careamics-napari.data_SEM_N2V
       display_name: Download data for N2V (SEM)
