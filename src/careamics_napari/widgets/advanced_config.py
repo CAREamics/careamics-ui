@@ -54,6 +54,7 @@ class AdvancedConfigurationWindow(QDialog):
             The configuration for the CAREamics algorithm.
         """
         super().__init__(parent)
+        self.setWindowModality(Qt.ApplicationModal)  # type: ignore
 
         self.configuration = careamics_config
         self.advanced_configuration = algorithm_config
