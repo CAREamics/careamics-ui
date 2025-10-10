@@ -411,7 +411,7 @@ class BasePlugin(QWidget):
         """Show the BMZ export dialog window."""
         # ask user for bmz model specs
         bmz_window = BMZExportWidget(self, cover_image_path=cover)
-        bmz_window.finished.connect(
+        bmz_window.accepted.connect(
             lambda: self._export_to_bmz(bmz_window, bmz_path, sample_input)
         )
         bmz_window.show()

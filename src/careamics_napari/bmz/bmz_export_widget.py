@@ -104,7 +104,7 @@ class BMZExportWidget(QDialog):
         self.submit_button.clicked.connect(self._submit)
         self.cancel_button = QPushButton("&Cancel")
         self.cancel_button.setMaximumWidth(120)
-        self.cancel_button.clicked.connect(lambda: self.close())  # type: ignore
+        self.cancel_button.clicked.connect(lambda: self.reject())  # type: ignore
 
         # layout
         form = QFormLayout()
