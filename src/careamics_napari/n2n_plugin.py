@@ -52,9 +52,6 @@ class N2NPlugin(BasePlugin):
 
     def show_advanced_config(self) -> None:
         """Show advanced configuration."""
-        # update axes in configuration
-        self.config_widget.axes_widget.update_config()
-
         # show window with advanced options
         win = N2NConfigurationWindow(self, self.careamics_config, self.advanced_config)
         win.finished.connect(lambda: print(self.advanced_config, self.careamics_config))

@@ -127,7 +127,7 @@ class TBPlotWidget(Container):
 
             self.tb = program.TensorBoard()
 
-            path = str(self.work_dir / "csv_logs")
+            path = str(self.work_dir / "tb_logs")
             self.tb.configure(argv=[None, "--logdir", path])  # type: ignore
             self.url = self.tb.launch()  # type: ignore
 
