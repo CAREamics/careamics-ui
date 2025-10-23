@@ -1,15 +1,13 @@
 """Widget for specifying axes order."""
 
 from enum import Enum
-from typing import Any
+from typing import Any, Self
 
-from careamics.config.data import DataConfig
 from qtpy import QtGui
 from qtpy.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QWidget
-from typing_extensions import Self
 
 from careamics_napari.careamics_utils import BaseConfig
-from careamics_napari.utils import REF_AXES, are_axes_valid
+from careamics_napari.utils import REF_AXES, are_axes_valid, filter_dimensions
 from careamics_napari.widgets.utils import bind
 
 
@@ -92,7 +90,7 @@ class AxesWidget(QWidget):
     """
 
     def __init__(
-        self,
+        self: Self,
         careamics_config: BaseConfig,
     ) -> None:
         """Initialize the widget.
@@ -116,7 +114,7 @@ class AxesWidget(QWidget):
         self.text_field = QLineEdit(self.configuration.data_config.axes)  # type: ignore
         self.text_field.setMaxLength(6)
         self.text_field.setValidator(LettersValidator(REF_AXES))
-        self.text_field.textChanged.connect(self._validate_axes)  # type: ignore
+        self.text_field.textChanged.connect(self.validate_axes)  # type: ignore
         self.text_field.setToolTip(
             "Enter the axes order as they are in your images, e.g. SZYX.\n"
             "Accepted axes are S(ample), T(ime), C(hannel), Z, Y, and X. Red\n"
@@ -129,22 +127,17 @@ class AxesWidget(QWidget):
         layout.addWidget(self.text_field)
         self.setLayout(layout)
         # validate text
-        self._validate_axes(self.text_field.text())
+        self.validate_axes(self.text_field.text())
 
         # create and bind properties to ui
         type(self).axes = bind(
             self.text_field,
             "text",
             default_value=self.configuration.data_config.axes,  # type: ignore
-            validation_fn=self._validate_axes,
+            validation_fn=self.validate_axes,
         )
 
-    def update_config(self: Self) -> None:
-        """Update the axes in the configuration if it's valid."""
-        if self.is_text_valid and isinstance(self.configuration.data_config, DataConfig):
-            self.configuration.data_config.axes = self.axes
-
-    def _validate_axes(self: Self, axes: str | None = None) -> bool:
+    def validate_axes(self: Self, axes: str | None = None) -> bool:
         """Validate the input text in the text field."""
         if axes is None:
             axes = self.text_field.text()
@@ -152,10 +145,9 @@ class AxesWidget(QWidget):
         if are_axes_valid(axes):
             self._set_text_color(Highlight.VALID)
             self.is_text_valid = True
-            # if axes.upper() in filter_dimensions(self.n_axes, self.is_3D):
-            #     self._set_text_color(Highlight.VALID)
-            # else:
-            #     self._set_text_color(Highlight.NOT_ACCEPTED)
+            if axes.upper() not in filter_dimensions(len(axes), self.configuration.is_3D):
+                self._set_text_color(Highlight.NOT_ACCEPTED)
+                self.is_text_valid = False
         else:
             self._set_text_color(Highlight.UNRECOGNIZED)
             self.is_text_valid = False
