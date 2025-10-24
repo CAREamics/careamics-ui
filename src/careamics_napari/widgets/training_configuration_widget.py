@@ -114,11 +114,6 @@ class ConfigurationWidget(QGroupBox):
 
     def update_config(self) -> None:
         """Update the configuration from the UI element."""
-        # update config axes (from axes widget)
-        self.axes_widget.update_config()
-        # is 3D
-        self.configuration.is_3D = self.is_3D
-
         # num epochs
         if self.configuration.training_config.lightning_trainer_config is not None:
             self.configuration.training_config.lightning_trainer_config["max_epochs"] = (
@@ -128,14 +123,14 @@ class ConfigurationWidget(QGroupBox):
         if isinstance(self.configuration.data_config, DataConfig):
             # batch size
             self.configuration.data_config.batch_size = self.batch_size
+            # is 3D
+            self.configuration.is_3D = self.is_3D
             # patch size
             _patch_size = [self.patch_xy_size, self.patch_xy_size]
             if self.is_3D:
                 _patch_size.insert(0, self.patch_z_size)
-            self.configuration.data_config.patch_size = _patch_size
-            self.configuration.set_3D(
-                self.is_3D, self.configuration.data_config.axes, _patch_size
-            )  # maybe not necessary, but let's have it to be sure.
+                # update the configuration
+            self.configuration.set_3D(self.is_3D, self.axes_widget.axes, _patch_size)
 
     def _enable_3d_changed(self, state: bool) -> None:
         """Update the signal 3D state.
@@ -146,6 +141,8 @@ class ConfigurationWidget(QGroupBox):
             3D state.
         """
         self.patch_z_spin.setEnabled(state)
+        self.configuration.is_3D = self.is_3D
+        self.axes_widget.validate_axes()
 
     def _bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""

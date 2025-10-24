@@ -38,6 +38,7 @@ def get_default_n2v_config() -> BaseConfig:
         independent_channels=True,
         train_dataloader_params={"num_workers": num_workers},
         val_dataloader_params={"num_workers": num_workers},
+        logger="tensorboard",
     )
     config = BaseConfig(**config.model_dump(), needs_gt=False)
 

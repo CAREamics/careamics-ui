@@ -358,7 +358,12 @@ class PredictionWidget(QGroupBox):
         max_sample : int
             The new maximum value of the progress bar.
         """
-        self.pb_prediction.setMaximum(max_sample)
+        # when we don't know the max samples it will be "?"
+        # setMaximum requires an integer.
+        try:
+            self.pb_prediction.setMaximum(max_sample)
+        except Exception:
+            pass
 
     def _update_sample_idx(self, sample: int) -> None:
         """Update the value of the progress bar.

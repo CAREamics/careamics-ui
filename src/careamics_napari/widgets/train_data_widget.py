@@ -80,6 +80,7 @@ class TrainDataWidget(QTabWidget):
 
         if self.currentIndex() == 0:
             # data is expected from napari layers
+            self.configuration.data_config.data_type = "array"
             train_data = [self.img_train.value.data]  # type: ignore
             val_data = [self.img_val.value.data]  # type: ignore
             if self.use_target:
@@ -88,6 +89,7 @@ class TrainDataWidget(QTabWidget):
 
         else:
             # data is expected from disk
+            self.configuration.data_config.data_type = "tiff"
             train_data = [self.train_images_folder.get_folder()]
             val_data = [self.val_images_folder.get_folder()]
             if self.use_target:

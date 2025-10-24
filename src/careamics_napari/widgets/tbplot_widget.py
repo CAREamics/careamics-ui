@@ -2,14 +2,13 @@
 
 import webbrowser
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import pyqtgraph as pg
 from magicgui.widgets import Container
 from qtpy.QtCore import QSize, Qt
 from qtpy.QtGui import QCursor, QIcon, QPixmap
 from qtpy.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
-from typing_extensions import Self
 
 from careamics_napari.resources import ICON_TF
 
@@ -128,7 +127,7 @@ class TBPlotWidget(Container):
 
             self.tb = program.TensorBoard()
 
-            path = str(self.work_dir / "logs" / "lightning_logs")
+            path = str(self.work_dir / "tb_logs")
             self.tb.configure(argv=[None, "--logdir", path])  # type: ignore
             self.url = self.tb.launch()  # type: ignore
 

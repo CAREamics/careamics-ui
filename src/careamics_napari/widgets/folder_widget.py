@@ -1,7 +1,8 @@
 """A widget used for selecting an existing folder."""
 
+from typing import Self
+
 from qtpy.QtWidgets import QFileDialog, QHBoxLayout, QLineEdit, QPushButton, QWidget
-from typing_extensions import Self
 
 
 class FolderWidget(QWidget):
@@ -42,7 +43,6 @@ class FolderWidget(QWidget):
     def _open_dialog(self: Self) -> None:
         """Open a dialog to select a folder."""
         path = QFileDialog.getExistingDirectory(self, "Select Folder")
-        print(path)
 
         # set text in the text field
         self.text_field.setText(path)
