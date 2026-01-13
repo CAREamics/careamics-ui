@@ -2,8 +2,8 @@
 
 from typing import Union
 
-from careamics.config.architectures import UNetModel
-from careamics.config.transformations import XYFlipModel, XYRandomRotate90Model
+from careamics.config.architectures import UNetConfig
+from careamics.config.transformations import XYFlipConfig, XYRandomRotate90Config
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -133,7 +133,7 @@ class AdvancedConfigurationWindow(QDialog):
         _depth = 2
         _num_filters = 32
         _indi_channels = True
-        if isinstance(self.configuration.algorithm_config.model, UNetModel):
+        if isinstance(self.configuration.algorithm_config.model, UNetConfig):
             _depth = self.configuration.algorithm_config.model.depth
             _num_filters = self.configuration.algorithm_config.model.num_channels_init
             _indi_channels = (
@@ -235,7 +235,7 @@ class AdvancedConfigurationWindow(QDialog):
         self.configuration.val_percentage = self.val_percentage
         self.configuration.val_minimum_split = self.val_split
 
-        if isinstance(self.configuration.algorithm_config.model, UNetModel):
+        if isinstance(self.configuration.algorithm_config.model, UNetConfig):
             self.configuration.algorithm_config.model.depth = self.model_depth
             self.configuration.algorithm_config.model.num_channels_init = (
                 self.num_conv_filters
@@ -246,11 +246,11 @@ class AdvancedConfigurationWindow(QDialog):
             )
 
         # update augmentations
-        augs: list[Union[XYFlipModel, XYRandomRotate90Model]] = []
+        augs: list[Union[XYFlipConfig, XYRandomRotate90Config]] = []
         if self.x_flip or self.y_flip:
-            augs.append(XYFlipModel(flip_x=self.x_flip, flip_y=self.y_flip, p=0.5))
+            augs.append(XYFlipConfig(flip_x=self.x_flip, flip_y=self.y_flip, p=0.5))
         if self.rotation:
-            augs.append(XYRandomRotate90Model(p=0.5))
+            augs.append(XYRandomRotate90Config(p=0.5))
         self.configuration.data_config.transforms = augs  # type: ignore
         # update advanced config as well
         if self.advanced_configuration is not None:
