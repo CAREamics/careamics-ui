@@ -244,12 +244,13 @@ class PredictionWidget(QGroupBox):
         """Create and bind the properties to the UI elements."""
         # type(self) returns the class of the instance, so we are adding
         # properties to the class itself, not the instance.
+
         # to check if should use a loaded model
         type(self).load_from_disk = bind(self.from_disk_radiobutton, "checked", False)
         # tiling
         type(self).do_tiling = bind(self.tiling_cbox, "checked", True)
         # tile size in xy
-        type(self).tile_size_xy = bind(self.tile_size_xy_spin, "value", 64)
+        type(self).tile_size_xy = bind(self.tile_size_xy_spin, "value", 128)
         # tile size in z
         type(self).tile_size_z = bind(self.tile_size_z_spin, "value", 8)
         # batch size
