@@ -1,4 +1,4 @@
-from careamics.config import create_n2v_configuration
+from careamics.config.ng_factories import create_advanced_n2v_config
 
 from careamics_napari.utils import get_num_workers
 
@@ -28,7 +28,7 @@ def get_default_n2v_config() -> BaseConfig:
     """Return a default N2V configuration."""
     num_workers = get_num_workers()
 
-    config = create_n2v_configuration(
+    config = create_advanced_n2v_config(
         experiment_name="careamics_n2v",
         data_type="array",
         axes="YX",

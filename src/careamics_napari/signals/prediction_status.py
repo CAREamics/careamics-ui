@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum, IntEnum
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Union
 
 from numpy.typing import NDArray
 from psygnal import evented
@@ -73,7 +73,7 @@ class PredictionUpdate:
     type: PredictionUpdateType
     """Type of the update."""
 
-    value: Optional[Union[int, float, str, NDArray, PredictionState, Exception]] = None
+    value: Union[int, float, str, list[NDArray], PredictionState, Exception] | None = None
     """Content of the update."""
 
 

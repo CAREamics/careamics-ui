@@ -1,9 +1,10 @@
 """Widget used to run prediction from the Training plugin."""
 
+from pathlib import Path
 from queue import Queue
 
 import numpy as np
-from careamics import CAREamist
+from careamics.careamist_v2 import CAREamistV2
 from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -60,7 +61,7 @@ class PredictionWidget(QGroupBox):
 
     # set a signal to send a careamist object
     # when it's loaded from disk.
-    careamist_loaded = Signal(CAREamist)
+    careamist_loaded = Signal(CAREamistV2)
     # signal for model selection changed
     model_from_disk = Signal(bool)
 
@@ -272,8 +273,8 @@ class PredictionWidget(QGroupBox):
             careamist = self._load_model(selected_file)
             if careamist is None:
                 print(f"Error loading the model: {selected_file}")
-                # if _has_napari:
-                #     ntf.show_error(f"Error loading the model: {selected_file}")
+                if _has_napari:
+                    ntf.show_error(f"Error loading the model: {selected_file}")
                 return
             # sent the careamist to the parent window / plugin
             self.careamist_loaded.emit(careamist)
@@ -281,7 +282,7 @@ class PredictionWidget(QGroupBox):
             self.predict_button.setEnabled(True)
             self.stop_button.setEnabled(False)
 
-    def _load_model(self, model_path: str) -> CAREamist | None:
+    def _load_model(self, model_path: str) -> CAREamistV2 | None:
         """Load a CAREamics model.
 
         Parameters
@@ -298,8 +299,8 @@ class PredictionWidget(QGroupBox):
             # make a training queue
             training_queue = Queue(10)
             # careamist: carefully load the model among the mist! :)
-            careamist = CAREamist(
-                model_path,
+            careamist = CAREamistV2(
+                checkpoint_path=Path(model_path),
                 work_dir=self.configuration.work_dir,
                 callbacks=[
                     UpdaterCallBack(training_queue, self.prediction_queue),
@@ -309,7 +310,7 @@ class PredictionWidget(QGroupBox):
 
             # check the loaded model algorithm
             # to be compatible with the current configuration
-            model_algo = careamist.cfg.get_algorithm_friendly_name()
+            model_algo = careamist.config.get_algorithm_friendly_name()
             config_algo = self.configuration.get_algorithm_friendly_name()
             if model_algo != config_algo:
                 err_msg = (

@@ -65,10 +65,8 @@ class ConfigurationWidget(QGroupBox):
 
         # number of epochs
         _n_epochs = 30
-        if self.configuration.training_config.lightning_trainer_config is not None:
-            _n_epochs = self.configuration.training_config.lightning_trainer_config[
-                "max_epochs"
-            ]
+        if self.configuration.training_config.trainer_params is not None:
+            _n_epochs = self.configuration.training_config.trainer_params["max_epochs"]
         self.n_epochs_spin = create_int_spinbox(
             1, 1000, _n_epochs, tooltip="Number of epochs"
         )
@@ -115,8 +113,8 @@ class ConfigurationWidget(QGroupBox):
     def update_config(self) -> None:
         """Update the configuration from the UI element."""
         # num epochs
-        if self.configuration.training_config.lightning_trainer_config is not None:
-            self.configuration.training_config.lightning_trainer_config["max_epochs"] = (
+        if self.configuration.training_config.trainer_params is not None:
+            self.configuration.training_config.trainer_params["max_epochs"] = (
                 self.num_epochs
             )
 
@@ -151,7 +149,7 @@ class ConfigurationWidget(QGroupBox):
         # is 3D
         type(self).is_3D = bind(self.enable_3d_chkbox, "checked")
         # number of epochs
-        if self.configuration.training_config.lightning_trainer_config is not None:
+        if self.configuration.training_config.trainer_params is not None:
             type(self).num_epochs = bind(self.n_epochs_spin, "value")
 
         if isinstance(self.configuration.data_config, DataConfig):

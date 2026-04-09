@@ -3,7 +3,7 @@ from pathlib import Path
 from queue import Queue
 
 import numpy as np
-from careamics import CAREamist
+from careamics.careamist_v2 import CAREamistV2
 from careamics.model_io.bioimage.cover_factory import create_cover
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QVBoxLayout, QWidget
@@ -21,7 +21,6 @@ from careamics_napari.signals import (
     TrainUpdate,
     TrainUpdateType,
 )
-from careamics_napari.utils.axes_utils import reshape_prediction
 from careamics_napari.widgets import (
     CAREamicsBanner,
     ConfigurationWidget,
@@ -66,8 +65,8 @@ class BasePlugin(QWidget):
         """
         super().__init__()
         self.viewer = napari_viewer
-        self.careamist: CAREamist | None = None  # to hold trained careamist
-        self.careamist_loaded: CAREamist | None = None  # to hold loaded careamist
+        self.careamist: CAREamistV2 | None = None  # to hold trained careamist
+        self.loaded_careamist: CAREamistV2 | None = None  # to hold loaded careamist
 
         # create statuses, used to keep track of the threads statuses
         self.train_status = TrainingStatus()  # type: ignore
@@ -304,12 +303,12 @@ class BasePlugin(QWidget):
                 PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
             )
 
-    def _on_careamist_loaded(self, careamist: CAREamist) -> None:
+    def _on_careamist_loaded(self, careamist: CAREamistV2) -> None:
         """Event handler called when a CAREamics instance has been loaded."""
-        self.careamist_loaded = careamist
+        self.loaded_careamist = careamist
         print(
             f"CAREamics instance loaded: "
-            f"{self.careamist_loaded.cfg.get_algorithm_friendly_name()}"
+            f"{self.loaded_careamist.config.get_algorithm_friendly_name()}"
         )
         if _has_napari:
             ntf.show_info("CAREamics model loaded successfully!")
@@ -319,15 +318,15 @@ class BasePlugin(QWidget):
         # update the prediction and stop buttons
         if not from_disk:
             self.prediction_widget.update_button_from_train(self.train_status.state)
-        elif self.careamist_loaded is not None:
+        elif self.loaded_careamist is not None:
             self.prediction_widget.predict_button.setEnabled(True)
             self.prediction_widget.stop_button.setEnabled(False)
 
-    def _which_careamist(self) -> CAREamist | None:
+    def _which_careamist(self) -> CAREamistV2 | None:
         """Which careamist to use? Trained one or the loaded one."""
         # if load from disk option is selected
         if self.prediction_widget.load_from_disk:
-            careamist = self.careamist_loaded
+            careamist = self.loaded_careamist
             if careamist is None:
                 ntf.show_warning("No model was loaded from disk!")
         else:
@@ -348,7 +347,7 @@ class BasePlugin(QWidget):
             Update.
         """
         if update.type == TrainUpdateType.CAREAMIST:
-            if isinstance(update.value, CAREamist):
+            if isinstance(update.value, CAREamistV2):
                 self.careamist = update.value
         elif update.type == TrainUpdateType.DEBUG:
             print(update.value)
@@ -395,12 +394,13 @@ class BasePlugin(QWidget):
                     else:
                         samples = update.value
 
+                    # TODO: check if needed to
                     # reshape the prediction to match the input axes
-                    samples = reshape_prediction(
-                        samples,  # type: ignore
-                        self.careamics_config.data_config.axes,  # type: ignore
-                        self.careamics_config.is_3D,
-                    )
+                    # samples = reshape_prediction(
+                    #     samples,
+                    #     self.careamics_config.data_config.axes,
+                    #     self.careamics_config.is_3D,
+                    # )
                     self.viewer.add_image(samples, name="Prediction")
             else:
                 self.pred_status.update(update)
@@ -439,9 +439,7 @@ class BasePlugin(QWidget):
 
         # make a default cover image
         output_patches = self.careamist.predict(
-            sample_input,
-            data_type="array",
-            tta_transforms=False,
+            pred_data=sample_input,
         )
         sample_output = np.concatenate(output_patches, axis=0)
         cover_path = create_cover(

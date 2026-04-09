@@ -3,7 +3,7 @@
 from typing import Union
 
 from careamics.config.architectures import UNetConfig
-from careamics.config.transformations import XYFlipConfig, XYRandomRotate90Config
+from careamics.config.augmentations import XYFlipConfig, XYRandomRotate90Config
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -251,7 +251,7 @@ class AdvancedConfigurationWindow(QDialog):
             augs.append(XYFlipConfig(flip_x=self.x_flip, flip_y=self.y_flip, p=0.5))
         if self.rotation:
             augs.append(XYRandomRotate90Config(p=0.5))
-        self.configuration.data_config.transforms = augs  # type: ignore
+        self.configuration.data_config.augmentations = augs
         # update advanced config as well
         if self.advanced_configuration is not None:
             self.advanced_configuration.x_flip = self.x_flip

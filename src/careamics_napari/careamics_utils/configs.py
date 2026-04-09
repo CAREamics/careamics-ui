@@ -1,14 +1,14 @@
 from pathlib import Path
 from typing import Annotated
 
-from careamics.config import Configuration
+from careamics.config.ng_configs import NGConfiguration
 from careamics.utils import get_careamics_home
 from pydantic import BaseModel, Field
 
 HOME = get_careamics_home()
 
 
-class BaseConfig(Configuration):
+class BaseConfig(NGConfiguration):
     """Base configuration class."""
 
     needs_gt: Annotated[bool, Field(exclude=True)] = False

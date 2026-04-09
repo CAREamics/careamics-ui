@@ -7,7 +7,7 @@ from threading import Thread
 
 import napari.utils.notifications as ntf
 import numpy as np
-from careamics import CAREamist
+from careamics.careamist_v2 import CAREamistV2
 from superqt.utils import thread_worker
 
 from careamics_napari.careamics_utils import (
@@ -29,7 +29,7 @@ def train_worker(
     data_sources: dict[str, list],
     training_queue: Queue,
     predict_queue: Queue,
-    careamist: CAREamist | None = None,
+    careamist: CAREamistV2 | None = None,
     pred_status: PredictionStatus | None = None,
 ) -> Generator[TrainUpdate, None, None]:
     """Model training worker.
@@ -101,7 +101,7 @@ def _train(
     data_sources: dict[str, list],
     training_queue: Queue,
     predict_queue: Queue,
-    careamist: CAREamist | None = None,
+    careamist: CAREamistV2 | None = None,
     pred_status: PredictionStatus | None = None,
 ) -> None:
     """Run the training.
@@ -150,14 +150,14 @@ def _train(
             if pred_status is not None:
                 callbacks.append(StopPredictionCallback(pred_status))
 
-            careamist = CAREamist(
+            careamist = CAREamistV2(
                 configuration, callbacks=callbacks, work_dir=configuration.work_dir
             )
         else:
             # only update the number of epochs
-            if configuration.training_config.lightning_trainer_config:
-                configuration.training_config.lightning_trainer_config["max_epochs"] = (
-                    configuration.training_config.lightning_trainer_config["max_epochs"]
+            if configuration.training_config.trainer_params:
+                configuration.training_config.trainer_params["max_epochs"] = (
+                    configuration.training_config.trainer_params["max_epochs"]
                 )
             if val_data is None:
                 ntf.show_error(
@@ -177,12 +177,10 @@ def _train(
     if careamist is not None:
         try:
             careamist.train(
-                train_source=train_data,
-                val_source=val_data,
-                train_target=train_target,
-                val_target=val_target,
-                val_minimum_split=configuration.val_minimum_split,
-                val_percentage=configuration.val_percentage,
+                train_data=train_data,
+                train_data_target=train_target,
+                val_data=val_data,
+                val_data_target=val_target,
             )
         except Exception as e:
             traceback.print_exc()

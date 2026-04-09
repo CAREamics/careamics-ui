@@ -5,7 +5,7 @@ from collections.abc import Generator
 from queue import Queue
 from threading import Thread
 
-from careamics import CAREamist
+from careamics.careamist_v2 import CAREamistV2
 from numpy.typing import NDArray
 from superqt.utils import thread_worker
 
@@ -19,7 +19,7 @@ from careamics_napari.signals import (
 
 @thread_worker
 def predict_worker(
-    careamist: CAREamist,
+    careamist: CAREamistV2,
     pred_data: NDArray | str,
     configuration: BaseConfig,
     update_queue: Queue,
@@ -68,7 +68,7 @@ def predict_worker(
 
 
 def _predict(
-    careamist: CAREamist,
+    careamist: CAREamistV2,
     pred_data: NDArray | str,
     configuration: BaseConfig,
     update_queue: Queue,
@@ -92,9 +92,9 @@ def _predict(
         tile_overlap.insert(0, configuration.tile_overlap_z)
     # predict with careamist
     try:
-        result = careamist.predict(  # type: ignore
-            pred_data,  # type: ignore
-            data_type=data_type,  # type: ignore
+        result, _ = careamist.predict(
+            pred_data,
+            data_type=data_type,
             tile_size=configuration.tile_size,
             tile_overlap=tuple(tile_overlap),
             batch_size=configuration.pred_batch_size,
