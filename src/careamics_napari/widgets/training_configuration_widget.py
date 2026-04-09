@@ -1,6 +1,5 @@
 """A widget allowing the creation of a CAREamics configuration."""
 
-from careamics.config.data import DataConfig, NGDataConfig
 from qtpy import QtGui
 from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
@@ -64,15 +63,27 @@ class ConfigurationWidget(QGroupBox):
         self.axes_widget = AxesWidget(careamics_config=self.configuration)
 
         # number of epochs
+        # if self.configuration.training_config.trainer_params is not None:
+        # _n_epochs = self.configuration.training_config.trainer_params.get(
+        #     "max_epochs", 30
+        # )
         _n_epochs = 30
-        if self.configuration.training_config.trainer_params is not None:
-            _n_epochs = self.configuration.training_config.trainer_params["max_epochs"]
         self.n_epochs_spin = create_int_spinbox(
             1, 1000, _n_epochs, tooltip="Number of epochs"
         )
 
+        # number of steps per epoch
+        # _n_steps = self.configuration.training_config.trainer_params.get(
+        #     "limit_train_batches", 100
+        # )
+        _n_steps = 100
+        self.n_steps_spin = create_int_spinbox(
+            1, 10000, _n_steps, tooltip="Number of steps (batches) per epoch"
+        )
+
         # batch size
-        self.batch_size_spin = create_int_spinbox(1, 512, 16, 1)
+        _bs = 16
+        self.batch_size_spin = create_int_spinbox(1, 512, _bs, 1)
         self.batch_size_spin.setToolTip(
             "Number of patches per batch (decrease if GPU memory is insufficient)"
         )
@@ -93,6 +104,7 @@ class ConfigurationWidget(QGroupBox):
         formLayout.addRow("Enable 3D", self.enable_3d_chkbox)
         formLayout.addRow(self.axes_widget.label.text(), self.axes_widget.text_field)
         formLayout.addRow("# Epochs", self.n_epochs_spin)
+        formLayout.addRow("# Steps per epoch", self.n_steps_spin)
         formLayout.addRow("Batch size", self.batch_size_spin)
         formLayout.addRow("Patch XY", self.patch_xy_spin)
         formLayout.addRow("Patch Z", self.patch_z_spin)
@@ -112,27 +124,29 @@ class ConfigurationWidget(QGroupBox):
 
     def update_config(self) -> None:
         """Update the configuration from the UI element."""
-        # num epochs
-        if self.configuration.training_config.trainer_params is not None:
-            self.configuration.training_config.trainer_params["max_epochs"] = (
-                self.num_epochs
-            )
+        # number of epochs
+        # if self.configuration.training_config.trainer_params is not None:
+        self.configuration.training_config.trainer_params["max_epochs"] = self.num_epochs
+        # number of steps
+        self.configuration.training_config.trainer_params["limit_train_batches"] = (
+            self.num_steps
+        )
 
-        if isinstance(self.configuration.data_config, NGDataConfig | DataConfig):
-            # batch size
-            self.configuration.data_config.batch_size = self.batch_size
-            # is 3D
-            self.configuration.is_3D = self.is_3D
-            # patch size
-            _patch_size = [self.patch_xy_size, self.patch_xy_size]
-            if self.is_3D:
-                _patch_size.insert(0, self.patch_z_size)
-            # update the configuration
-            # self.configuration.set_3D(self.is_3D, self.axes_widget.axes, _patch_size)
-            # self.configuration.data_config.set_3D(self.axes_widget.axes, _patch_size)
-            self.configuration.algorithm_config.model.set_3D(self.is_3D)
-            self.configuration.data_config.patching.patch_size = _patch_size
-            self.configuration.data_config.axes = self.axes_widget.axes
+        # if isinstance(self.configuration.data_config, NGDataConfig | DataConfig):
+        # batch size
+        self.configuration.data_config.batch_size = self.batch_size
+        # is 3D
+        self.configuration.is_3D = self.is_3D
+        # patch size
+        _patch_size = [self.patch_xy_size, self.patch_xy_size]
+        if self.is_3D:
+            _patch_size.insert(0, self.patch_z_size)
+        # update the configuration
+        # self.configuration.set_3D(self.is_3D, self.axes_widget.axes, _patch_size)
+        # self.configuration.data_config.set_3D(self.axes_widget.axes, _patch_size)
+        self.configuration.algorithm_config.model.set_3D(self.is_3D)
+        self.configuration.data_config.patching.patch_size = _patch_size
+        self.configuration.data_config.axes = self.axes_widget.axes
 
     def _enable_3d_changed(self, state: bool) -> None:
         """Update the signal 3D state.
@@ -153,16 +167,17 @@ class ConfigurationWidget(QGroupBox):
         # is 3D
         type(self).is_3D = bind(self.enable_3d_chkbox, "checked")
         # number of epochs
-        if self.configuration.training_config.trainer_params is not None:
-            type(self).num_epochs = bind(self.n_epochs_spin, "value")
+        type(self).num_epochs = bind(self.n_epochs_spin, "value")
+        # number of steps
+        type(self).num_steps = bind(self.n_steps_spin, "value")
 
-        if isinstance(self.configuration.data_config, NGDataConfig | DataConfig):
-            # batch size
-            type(self).batch_size = bind(self.batch_size_spin, "value")
-            # XY patch size
-            type(self).patch_xy_size = bind(self.patch_xy_spin, "value")
-            # Z patch size
-            type(self).patch_z_size = bind(self.patch_z_spin, "value")
+        # if isinstance(self.configuration.data_config, NGDataConfig | DataConfig):
+        # batch size
+        type(self).batch_size = bind(self.batch_size_spin, "value")
+        # XY patch size
+        type(self).patch_xy_size = bind(self.patch_xy_spin, "value")
+        # Z patch size
+        type(self).patch_z_size = bind(self.patch_z_spin, "value")
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ def get_default_n2v_config() -> BaseConfig:
         patch_size=[64, 64],
         batch_size=16,
         num_epochs=30,
+        num_steps=100,
         independent_channels=True,
         train_dataloader_params={"num_workers": num_workers},
         val_dataloader_params={"num_workers": num_workers},
