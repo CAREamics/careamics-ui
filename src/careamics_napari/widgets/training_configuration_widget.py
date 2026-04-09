@@ -1,6 +1,6 @@
 """A widget allowing the creation of a CAREamics configuration."""
 
-from careamics.config.data import DataConfig
+from careamics.config.data import DataConfig, NGDataConfig
 from qtpy import QtGui
 from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
@@ -118,7 +118,7 @@ class ConfigurationWidget(QGroupBox):
                 self.num_epochs
             )
 
-        if isinstance(self.configuration.data_config, DataConfig):
+        if isinstance(self.configuration.data_config, NGDataConfig | DataConfig):
             # batch size
             self.configuration.data_config.batch_size = self.batch_size
             # is 3D
@@ -127,8 +127,12 @@ class ConfigurationWidget(QGroupBox):
             _patch_size = [self.patch_xy_size, self.patch_xy_size]
             if self.is_3D:
                 _patch_size.insert(0, self.patch_z_size)
-                # update the configuration
-            self.configuration.set_3D(self.is_3D, self.axes_widget.axes, _patch_size)
+            # update the configuration
+            # self.configuration.set_3D(self.is_3D, self.axes_widget.axes, _patch_size)
+            # self.configuration.data_config.set_3D(self.axes_widget.axes, _patch_size)
+            self.configuration.algorithm_config.model.set_3D(self.is_3D)
+            self.configuration.data_config.patching.patch_size = _patch_size
+            self.configuration.data_config.axes = self.axes_widget.axes
 
     def _enable_3d_changed(self, state: bool) -> None:
         """Update the signal 3D state.
@@ -152,7 +156,7 @@ class ConfigurationWidget(QGroupBox):
         if self.configuration.training_config.trainer_params is not None:
             type(self).num_epochs = bind(self.n_epochs_spin, "value")
 
-        if isinstance(self.configuration.data_config, DataConfig):
+        if isinstance(self.configuration.data_config, NGDataConfig | DataConfig):
             # batch size
             type(self).batch_size = bind(self.batch_size_spin, "value")
             # XY patch size

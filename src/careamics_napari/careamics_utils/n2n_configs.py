@@ -1,4 +1,4 @@
-from careamics.config import create_n2n_configuration
+from careamics.config.ng_factories import create_advanced_n2n_config
 
 from careamics_napari.utils import get_num_workers
 
@@ -19,8 +19,8 @@ def get_default_n2n_config() -> BaseConfig:
     """Return a default N2N configuration."""
     num_workers = get_num_workers()
 
-    config = create_n2n_configuration(
-        experiment_name="careamics_care",
+    config = create_advanced_n2n_config(
+        experiment_name="careamics_n2n",
         data_type="array",
         axes="YX",
         patch_size=[64, 64],
