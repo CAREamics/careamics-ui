@@ -1,5 +1,5 @@
 import pytest
-from careamics import CAREamist
+from careamics.careamist_v2 import CAREamistV2
 from careamics.config import Configuration
 
 from careamics_napari.careamics_utils import (
@@ -23,5 +23,5 @@ def test_creating_configuration(algorithm):
     config = config_fn()
     assert isinstance(config, Configuration)
 
-    careamist = CAREamist(source=config)
-    assert isinstance(careamist, CAREamist)
+    careamist = CAREamistV2(config)
+    assert isinstance(careamist, CAREamistV2)
