@@ -5,6 +5,7 @@ from collections.abc import Generator
 from queue import Queue
 from threading import Thread
 
+# from careamics.lightning import PredictionStoppedException
 from careamics.careamist_v2 import CAREamistV2
 from numpy.typing import NDArray
 from superqt.utils import thread_worker
@@ -104,7 +105,7 @@ def _predict(
             update_queue.put(PredictionUpdate(PredictionUpdateType.SAMPLE, result))
 
     except PredictionStoppedException:
-        # Handle user-requested stop
+        # handle user-requested stop
         update_queue.put(
             PredictionUpdate(PredictionUpdateType.STATE, PredictionState.STOPPED)
         )

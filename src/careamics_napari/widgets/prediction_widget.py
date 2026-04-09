@@ -5,6 +5,8 @@ from queue import Queue
 
 import numpy as np
 from careamics.careamist_v2 import CAREamistV2
+
+# from careamics.lightning import StopPredictionCallback
 from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -121,7 +123,7 @@ class PredictionWidget(QGroupBox):
         )
 
         # tiling spinboxes
-        self.tile_size_xy_spin = PowerOfTwoSpinBox(64, 1024, 64)
+        self.tile_size_xy_spin = PowerOfTwoSpinBox(64, 1024, 128)
         self.tile_size_xy_spin.setToolTip("Tile size in the xy dimension.")
         # self.tile_size_xy.setEnabled(False)
 
@@ -282,6 +284,9 @@ class PredictionWidget(QGroupBox):
             self.model_textbox.setText(selected_file)
             self.predict_button.setEnabled(True)
             self.stop_button.setEnabled(False)
+
+    def _is_prediction_stopped(self):
+        return self.pred_status == PredictionState.STOPPED
 
     def _load_model(self, model_path: str) -> CAREamistV2 | None:
         """Load a CAREamics model.

@@ -8,6 +8,8 @@ from threading import Thread
 import napari.utils.notifications as ntf
 import numpy as np
 from careamics.careamist_v2 import CAREamistV2
+
+# from careamics.lightning import StopPredictionCallback
 from superqt.utils import thread_worker
 
 from careamics_napari.careamics_utils import (
