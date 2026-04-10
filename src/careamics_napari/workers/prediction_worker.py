@@ -2,6 +2,7 @@
 
 import traceback
 from collections.abc import Generator
+from pathlib import Path
 from queue import Queue
 from threading import Thread
 
@@ -87,19 +88,48 @@ def _predict(
     update_queue : Queue
         Queue used to send updates to the UI.
     """
-    data_type = "tiff" if isinstance(pred_data, str) else "array"
+    data_type = "array"
+    write_type = "tiff"
+    in_memory = True
+    if isinstance(pred_data, str | Path):
+        if str(pred_data).endswith("zarr"):
+            data_type = "zarr"
+            write_type = "zarr"
+            in_memory = False
+        else:
+            data_type = "tiff"
+        # prediction dir if writing to disk is set
+        pred_dir = Path(pred_data).parent / "predictions"
+    else:
+        pred_dir = configuration.work_dir / "predictions"
+
     tile_overlap = [configuration.tile_overlap_xy, configuration.tile_overlap_xy]
     if configuration.is_3D:
         tile_overlap.insert(0, configuration.tile_overlap_z)
+
     # predict with careamist
     try:
-        result, _ = careamist.predict(
-            pred_data,
-            data_type=data_type,
-            tile_size=configuration.tile_size,
-            tile_overlap=tuple(tile_overlap),
-            batch_size=configuration.pred_batch_size,
-        )
+        if configuration.write_to_disk:
+            result = careamist.predict_to_disk(
+                pred_data,
+                prediction_dir=pred_dir,
+                data_type=data_type,
+                write_type=write_type,
+                tile_size=configuration.tile_size,
+                tile_overlap=tuple(tile_overlap),
+                batch_size=configuration.pred_batch_size,
+                in_memory=in_memory,
+            )
+            print(f"Predictions are written to {pred_dir}")
+
+        else:
+            result, _ = careamist.predict(
+                pred_data,
+                data_type=data_type,
+                tile_size=configuration.tile_size,
+                tile_overlap=tuple(tile_overlap),
+                batch_size=configuration.pred_batch_size,
+            )
 
         if result is not None and len(result) > 0:
             update_queue.put(PredictionUpdate(PredictionUpdateType.SAMPLE, result))

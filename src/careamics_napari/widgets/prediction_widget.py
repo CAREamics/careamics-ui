@@ -138,6 +138,11 @@ class PredictionWidget(QGroupBox):
         )
         # self.batch_size_spin.setEnabled(False)
 
+        # write to disk checkbox
+        self.to_disk_cbox = QCheckBox("Write predictions to disk")
+        self.to_disk_cbox.setChecked(False)
+        self.to_disk_cbox.setToolTip("Select to write the predictions to disk directly.")
+
         # prediction progress bar
         self.pb_prediction = create_progressbar(
             max_value=20, text_format="Prediction ?/?"
@@ -176,6 +181,7 @@ class PredictionWidget(QGroupBox):
         tiling_form.addRow("Z tile size", self.tile_size_z_spin)
         tiling_form.addRow("Batch size", self.batch_size_spin)
         vbox.addLayout(tiling_form)
+        vbox.addWidget(self.to_disk_cbox)
         vbox.addWidget(self.pb_prediction)
         hbox = QHBoxLayout()
         hbox.addWidget(self.predict_button, alignment=Qt.AlignLeft)  # type: ignore
@@ -184,6 +190,7 @@ class PredictionWidget(QGroupBox):
         self.setLayout(vbox)
 
         # actions
+        self.predict_data_widget.data_source_changed.connect(self._update_write_to_disk)
         self.from_train_radiobutton.clicked.connect(self._model_selection_changed)
         self.from_disk_radiobutton.clicked.connect(self._model_selection_changed)
         self.load_button.clicked.connect(self._select_model_checkpoint)
@@ -227,7 +234,7 @@ class PredictionWidget(QGroupBox):
 
     def get_data_source(self) -> str | np.ndarray | None:
         """Get the selected data sources from the predict data widget."""
-        return self.predict_data_widget.get_data_sources()
+        return self.predict_data_widget.get_data_source()
 
     def update_config(self) -> None:
         """Update the prediction configuration from the UI element."""
@@ -241,6 +248,9 @@ class PredictionWidget(QGroupBox):
 
         # batch size
         self.configuration.pred_batch_size = self.batch_size
+
+        # write to disk
+        self.configuration.write_to_disk = self.to_disk
 
     def _bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""
@@ -256,13 +266,14 @@ class PredictionWidget(QGroupBox):
         # tile size in z
         type(self).tile_size_z = bind(self.tile_size_z_spin, "value", 8)
         # batch size
-        type(self).batch_size = bind(self.batch_size_spin, "value", 1)
         # for example when self.batch_size_spin value is changed,
         # self.batch_size will be updated automatically.
+        type(self).batch_size = bind(self.batch_size_spin, "value", 1)
+        # write to disk
+        type(self).to_disk = bind(self.to_disk_cbox, "checked", False)
 
     def _model_selection_changed(self) -> None:
         """Update model selection ui."""
-        # load_from_disk = self.from_disk_radiobutton.isChecked()
         self.model_textbox.setEnabled(self.load_from_disk)
         self.load_button.setEnabled(self.load_from_disk)
         self.model_from_disk.emit(self.load_from_disk)
@@ -332,6 +343,16 @@ class PredictionWidget(QGroupBox):
         except Exception as e:
             print(f"Error loading the model:\n{e}")
             return None
+
+    def _update_write_to_disk(self) -> None:
+        """Update the write to disk checkbox."""
+        data_source = self.get_data_source()
+        if isinstance(data_source, str) and data_source.endswith("zarr"):
+            self.to_disk_cbox.setEnabled(True)
+            self.to_disk_cbox.setEnabled(False)
+        else:
+            self.to_disk_cbox.setChecked(False)
+            self.to_disk_cbox.setEnabled(True)
 
     def _update_tilings(self, state: bool) -> None:
         """Update the widgets and the signal tiling parameter.

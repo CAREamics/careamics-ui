@@ -384,7 +384,6 @@ class BasePlugin(QWidget):
         else:
             if update.type == PredictionUpdateType.SAMPLE:
                 # add image to napari
-                # TODO keep scaling?
                 if self.viewer is not None:
                     # value is either a numpy array or
                     # a list of numpy arrays with each sample/time-point as an element

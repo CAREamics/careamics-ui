@@ -45,6 +45,9 @@ class BaseConfig(NGConfiguration):
     pred_batch_size: Annotated[int, Field(exclude=True)] = 1
     """Batch size for prediction."""
 
+    write_to_disk: Annotated[bool, Field(exclude=True)] = False
+    """Whether to write the predictions to disk."""
+
 
 class AdvancedConfig(BaseModel):
     """Advanced configuration class."""
