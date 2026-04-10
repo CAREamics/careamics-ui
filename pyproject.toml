@@ -4,28 +4,26 @@ name = "careamics-napari"
 dynamic = ["version"]
 description = "napari plugin providing an interface to CAREamics."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { text = "BSD-3-Clause" }
 authors = [{ name = 'Joran Deschamps', email = 'joran.deschamps@fht.org' }]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: BSD License",
     "Typing :: Typed",
     "Framework :: napari",
 ]
 dependencies = [
-    'qtpy',
-    'psygnal',
-    'pyqtgraph',
-    'napari[all]',
-    'careamics[tensorboard]>=0.0.19',
-    'careamics-portfolio',
-    'numcodecs<0.16'
+    "qtpy",
+    "psygnal",
+    "pyqtgraph",
+    "napari[all]",
+    "careamics[tensorboard]>=0.1",
+    "careamics-portfolio",
+    "numcodecs<0.16"
 ]
 
 [project.optional-dependencies]
