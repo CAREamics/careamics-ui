@@ -1,6 +1,6 @@
 import pytest
 from careamics.careamist_v2 import CAREamistV2
-from careamics.config import Configuration
+from careamics.config.ng_configs import NGConfiguration
 
 from careamics_napari.careamics_utils import (
     get_default_care_config,
@@ -21,7 +21,7 @@ def test_creating_configuration(algorithm):
     assert config_fn is not None
 
     config = config_fn()
-    assert isinstance(config, Configuration)
+    assert isinstance(config, NGConfiguration)
 
     careamist = CAREamistV2(config)
     assert isinstance(careamist, CAREamistV2)

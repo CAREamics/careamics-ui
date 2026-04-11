@@ -1,11 +1,11 @@
 # to set PYTORCH_ENABLE_MPS_FALLBACK for macOS
-
 import contextlib
 import logging
 import sys
 from itertools import combinations
 
 import numpy as np
+import utils
 
 # disable logging
 from careamics.careamist import logger
@@ -13,6 +13,9 @@ from careamics.careamist_v2 import CAREamistV2
 from careamics.config.ng_factories import create_advanced_n2v_config
 
 # from careamics_napari.utils.axes_utils import reshape_prediction
+
+# to avoid "imported but unused" error for utils and removed by ruff precommit
+utils.dummy()
 
 logger.setLevel("ERROR")
 logging.getLogger("pytorch_lightning.utilities.rank_zero").setLevel(logging.FATAL)
