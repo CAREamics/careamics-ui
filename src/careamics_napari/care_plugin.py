@@ -53,7 +53,6 @@ class CAREPlugin(BasePlugin):
         self.update_config()
         # show window with advanced options
         win = CAREConfigurationWindow(self, self.careamics_config, self.advanced_config)
-        win.finished.connect(lambda: print(self.advanced_config, self.careamics_config))
         win.show()
 
 

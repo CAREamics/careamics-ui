@@ -232,7 +232,7 @@ class BasePlugin(QWidget):
 
             # update configuration from ui
             self.update_config()
-            print(self.careamics_config)
+            print(f"\n{self.careamics_config}")
 
             # start the training thread
             self.train_worker = train_worker(
