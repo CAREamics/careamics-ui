@@ -1,3 +1,5 @@
+# type: ignore[attr-defined]
+
 """A dialog widget allowing modifying advanced settings."""
 
 from typing import Union
@@ -20,10 +22,7 @@ from qtpy.QtWidgets import (
 )
 
 from careamics_napari.careamics_utils import AdvancedConfig, BaseConfig
-from careamics_napari.widgets.qt_widgets import (
-    create_double_spinbox,
-    create_int_spinbox,
-)
+from careamics_napari.widgets.qt_widgets import create_int_spinbox
 from careamics_napari.widgets.utils import bind
 
 
@@ -89,16 +88,10 @@ class AdvancedConfigurationWindow(QDialog):
 
         # validation
         val_grpbox = QGroupBox("Validation")
-        self.val_perc_spin = create_double_spinbox(
-            0.01, 1, self.configuration.val_percentage, 0.01, n_decimal=2
+        self.n_val_patches_spin = create_int_spinbox(
+            1, 100, self.configuration.data_config.n_val_patches, 1
         )
-        self.val_perc_spin.setToolTip(
-            "Percentage of the training data used for validation."
-        )
-        self.val_split_spin = create_int_spinbox(
-            1, 100, self.configuration.val_minimum_split, 1
-        )
-        self.val_split_spin.setToolTip(
+        self.n_val_patches_spin.setToolTip(
             "Minimum number of patches or images in the validation set."
         )
 
@@ -154,9 +147,7 @@ class AdvancedConfigurationWindow(QDialog):
         self.indi_channels_chkbox.setToolTip(
             "Check to treat the channels independently during\ntraining."
         )
-        self.indi_channels_chkbox.setEnabled(
-            "C" in self.configuration.data_config.axes  # type: ignore
-        )
+        self.indi_channels_chkbox.setEnabled("C" in self.configuration.data_config.axes)
 
         # layout
         layout = QVBoxLayout()
@@ -167,21 +158,16 @@ class AdvancedConfigurationWindow(QDialog):
         layout.addSpacing(10)
 
         validation_layout = QFormLayout()
-        validation_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
-        validation_layout.setFieldGrowthPolicy(
-            QFormLayout.AllNonFixedFieldsGrow  # type: ignore
-        )
-        validation_layout.addRow("Percentage", self.val_perc_spin)
-        validation_layout.addRow("Minimum split", self.val_split_spin)
+        validation_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        validation_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        validation_layout.addRow("Validation Patches", self.n_val_patches_spin)
         val_grpbox.setLayout(validation_layout)
         layout.addWidget(val_grpbox)
         layout.addSpacing(10)
 
         augmentations_layout = QFormLayout()
-        augmentations_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
-        augmentations_layout.setFieldGrowthPolicy(
-            QFormLayout.AllNonFixedFieldsGrow  # type: ignore
-        )
+        augmentations_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        augmentations_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         augmentations_layout.addRow(self.x_flip_chkbox)
         augmentations_layout.addRow(self.y_flip_chkbox)
         augmentations_layout.addRow(self.rotations_chkbox)
@@ -190,10 +176,8 @@ class AdvancedConfigurationWindow(QDialog):
         layout.addSpacing(10)
 
         model_params_layout = QFormLayout()
-        model_params_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
-        model_params_layout.setFieldGrowthPolicy(
-            QFormLayout.AllNonFixedFieldsGrow  # type: ignore
-        )
+        model_params_layout.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        model_params_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         model_params_layout.addRow("Depth", self.model_depth_spin)
         model_params_layout.addRow("# Filters", self.num_conv_filters_spin)
         model_grpbox.setLayout(model_params_layout)
@@ -219,8 +203,7 @@ class AdvancedConfigurationWindow(QDialog):
         # type(self) returns the class of the instance, so we are adding
         # properties to the class itself, not the instance.
         type(self).experiment_name = bind(self.experiment_txtbox, "text")
-        type(self).val_percentage = bind(self.val_perc_spin, "value")
-        type(self).val_split = bind(self.val_split_spin, "value")
+        type(self).n_val_patches = bind(self.n_val_patches_spin, "value")
         type(self).x_flip = bind(self.x_flip_chkbox, "checked")
         type(self).y_flip = bind(self.y_flip_chkbox, "checked")
         type(self).rotation = bind(self.rotations_chkbox, "checked")
@@ -231,19 +214,14 @@ class AdvancedConfigurationWindow(QDialog):
     def update_config(self) -> None:
         """Update the configuration object from UI elements."""
         self.configuration.experiment_name = self.experiment_name
-
-        self.configuration.val_percentage = self.val_percentage
-        self.configuration.val_minimum_split = self.val_split
-
-        if isinstance(self.configuration.algorithm_config.model, UNetConfig):
-            self.configuration.algorithm_config.model.depth = self.model_depth
-            self.configuration.algorithm_config.model.num_channels_init = (
-                self.num_conv_filters
-            )
-
-            self.configuration.algorithm_config.model.independent_channels = (
-                self.indi_channels
-            )
+        self.configuration.data_config.n_val_patches = self.n_val_patches
+        self.configuration.algorithm_config.model.depth = self.model_depth
+        self.configuration.algorithm_config.model.num_channels_init = (
+            self.num_conv_filters
+        )
+        self.configuration.algorithm_config.model.independent_channels = (
+            self.indi_channels
+        )
 
         # update augmentations
         augs: list[Union[XYFlipConfig, XYRandomRotate90Config]] = []

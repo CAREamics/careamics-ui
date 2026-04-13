@@ -55,6 +55,7 @@ class N2NPlugin(BasePlugin):
         self.update_config()
         # show window with advanced options
         win = N2NConfigurationWindow(self, self.careamics_config, self.advanced_config)
+        win.finished.connect(lambda: win.update_config())
         win.show()
 
 

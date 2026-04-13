@@ -1,3 +1,4 @@
+# type: ignore[attr-defined]
 """A widget allowing the creation of a CAREamics configuration."""
 
 from qtpy import QtGui

@@ -23,13 +23,6 @@ class BaseConfig(NGConfiguration):
     work_dir: Annotated[Path, Field(exclude=True)] = HOME
     """Directory where the checkpoints and logs are saved."""
 
-    # training parameters
-    val_percentage: Annotated[float, Field(exclude=True)] = 0.1
-    """Percentage of the training data used for validation."""
-
-    val_minimum_split: Annotated[int, Field(exclude=True)] = 1
-    """Minimum number of patches or images in the validation set."""
-
     # prediction parameters
     tile_size: Annotated[
         tuple[int, int] | tuple[int, int, int] | None, Field(exclude=True)

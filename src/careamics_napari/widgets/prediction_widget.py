@@ -1,3 +1,4 @@
+# type: ignore[attr-defined]
 """Widget used to run prediction from the Training plugin."""
 
 from pathlib import Path

@@ -166,8 +166,6 @@ class BasePlugin(QWidget):
         if self.prediction_widget is not None:
             self.prediction_widget.update_config()
 
-        print(f"update_config:\n{self.careamics_config}")
-
     def export_model(self, destination: Path, export_type: str) -> None:
         """Export the trained model."""
         if self.careamist is None:
@@ -454,11 +452,11 @@ class BasePlugin(QWidget):
         self, bmz_window: BMZExportWidget, bmz_path: Path, sample_input: np.ndarray
     ) -> None:
         bmz_data = {
-            "model_name": bmz_window.model_name,
-            "description": bmz_window.general_description,
-            "data_description": bmz_window.data_description,
+            "model_name": bmz_window.model_name,  # type: ignore[attr-defined]
+            "description": bmz_window.general_description,  # type: ignore[attr-defined]
+            "data_description": bmz_window.data_description,  # type: ignore[attr-defined]
             "authors": bmz_window.authors,
-            "cover": bmz_window.cover_image,
+            "cover": bmz_window.cover_image,  # type: ignore[attr-defined]
         }
 
         try:
