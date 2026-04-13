@@ -23,7 +23,7 @@ dependencies = [
     "napari[all]",
     "careamics[tensorboard]>=0.1",
     "careamics-portfolio",
-    "numcodecs<0.16"
+    "numcodecs<0.16",
 ]
 
 [project.optional-dependencies]
@@ -167,3 +167,6 @@ checks = [
 exclude = [ # don't report on objects that match any of these regex
     "test_*",
 ]
+
+[tool.uv.sources]
+careamics = { git = "https://github.com/CAREamics/careamics" }

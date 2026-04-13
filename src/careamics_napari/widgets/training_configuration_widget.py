@@ -63,19 +63,12 @@ class ConfigurationWidget(QGroupBox):
         self.axes_widget = AxesWidget(careamics_config=self.configuration)
 
         # number of epochs
-        # if self.configuration.training_config.trainer_params is not None:
-        # _n_epochs = self.configuration.training_config.trainer_params.get(
-        #     "max_epochs", 30
-        # )
         _n_epochs = 30
         self.n_epochs_spin = create_int_spinbox(
             1, 1000, _n_epochs, tooltip="Number of epochs"
         )
 
         # number of steps per epoch
-        # _n_steps = self.configuration.training_config.trainer_params.get(
-        #     "limit_train_batches", 100
-        # )
         _n_steps = 100
         self.n_steps_spin = create_int_spinbox(
             1, 10000, _n_steps, tooltip="Number of steps (batches) per epoch"
@@ -125,14 +118,12 @@ class ConfigurationWidget(QGroupBox):
     def update_config(self) -> None:
         """Update the configuration from the UI element."""
         # number of epochs
-        # if self.configuration.training_config.trainer_params is not None:
         self.configuration.training_config.trainer_params["max_epochs"] = self.num_epochs
         # number of steps
         self.configuration.training_config.trainer_params["limit_train_batches"] = (
             self.num_steps
         )
 
-        # if isinstance(self.configuration.data_config, NGDataConfig | DataConfig):
         # batch size
         self.configuration.data_config.batch_size = self.batch_size
         # is 3D
@@ -142,6 +133,7 @@ class ConfigurationWidget(QGroupBox):
         if self.is_3D:
             _patch_size.insert(0, self.patch_z_size)
         # update the configuration
+        # ToDo: implement set_3D in NGConfig
         # self.configuration.set_3D(self.is_3D, self.axes_widget.axes, _patch_size)
         # self.configuration.data_config.set_3D(self.axes_widget.axes, _patch_size)
         self.configuration.algorithm_config.model.set_3D(self.is_3D)
