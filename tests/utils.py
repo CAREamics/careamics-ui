@@ -7,4 +7,4 @@ if platform.system() == "Darwin":
 
 
 def dummy():
-    print(os.environ["PYTORCH_ENABLE_MPS_FALLBACK"])
+    print(os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK"))
