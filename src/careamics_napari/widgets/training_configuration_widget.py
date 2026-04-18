@@ -133,13 +133,8 @@ class ConfigurationWidget(QGroupBox):
         _patch_size = [self.patch_xy_size, self.patch_xy_size]
         if self.is_3D:
             _patch_size.insert(0, self.patch_z_size)
-        # update the configuration
-        # ToDo: implement set_3D in NGConfig
-        # self.configuration.set_3D(self.is_3D, self.axes_widget.axes, _patch_size)
-        # self.configuration.data_config.set_3D(self.axes_widget.axes, _patch_size)
-        self.configuration.algorithm_config.model.set_3D(self.is_3D)
-        self.configuration.data_config.patching.patch_size = _patch_size
-        self.configuration.data_config.axes = self.axes_widget.axes
+        # update the 3D in configuration
+        self.configuration.set_3D(self.is_3D, self.axes_widget.axes, _patch_size)
 
     def _enable_3d_changed(self, state: bool) -> None:
         """Update the signal 3D state.
