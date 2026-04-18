@@ -159,7 +159,6 @@ class ConfigurationWidget(QGroupBox):
         # number of steps
         type(self).num_steps = bind(self.n_steps_spin, "value")
 
-        # if isinstance(self.configuration.data_config, NGDataConfig | DataConfig):
         # batch size
         type(self).batch_size = bind(self.batch_size_spin, "value")
         # XY patch size
