@@ -1,3 +1,4 @@
+# type: ignore[attr-defined]
 import traceback
 from pathlib import Path
 from queue import Queue
@@ -21,6 +22,7 @@ from careamics_napari.signals import (
     TrainUpdate,
     TrainUpdateType,
 )
+from careamics_napari.utils import get_prediction_samples
 from careamics_napari.widgets import (
     CAREamicsBanner,
     ConfigurationWidget,
@@ -264,10 +266,6 @@ class BasePlugin(QWidget):
         state : PredictionState
             New state.
         """
-        # if self.careamist is None and self.careamist_loaded is None:
-        #     ntf.show_info("No trained or loaded model is available for prediction.")
-        #     self.pred_status.state = PredictionState.STOPPED
-        #     return
         careamist = self._which_careamist()
         if careamist is None:
             self.pred_status.state = PredictionState.STOPPED
@@ -383,22 +381,16 @@ class BasePlugin(QWidget):
             if update.type == PredictionUpdateType.SAMPLE:
                 # add image to napari
                 if self.viewer is not None:
-                    # value is either a numpy array or
-                    # a list of numpy arrays with each sample/time-point as an element
-                    if isinstance(update.value, list):
-                        # combine all samples
-                        samples = np.concatenate(update.value, axis=0)
+                    preds, sources = update.value
+                    samples = get_prediction_samples(preds)
+                    if len(samples) == 1:
+                        self.viewer.add_image(samples[0], name="Prediction")
                     else:
-                        samples = update.value
-
-                    # TODO: check if needed to
-                    # reshape the prediction to match the input axes
-                    # samples = reshape_prediction(
-                    #     samples,
-                    #     self.careamics_config.data_config.axes,
-                    #     self.careamics_config.is_3D,
-                    # )
-                    self.viewer.add_image(samples, name="Prediction")
+                        # add an image layer for each
+                        for i, img in enumerate(samples):
+                            self.viewer.add_image(
+                                img, name=f"{Path(sources[i]).stem}_Prediction"
+                            )
             else:
                 self.pred_status.update(update)
 

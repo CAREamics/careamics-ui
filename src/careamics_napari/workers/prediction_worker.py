@@ -110,7 +110,7 @@ def _predict(
     # predict with careamist
     try:
         if configuration.write_to_disk:
-            result = careamist.predict_to_disk(
+            results = careamist.predict_to_disk(
                 pred_data,
                 prediction_dir=pred_dir,
                 data_type=data_type,
@@ -123,7 +123,7 @@ def _predict(
             print(f"Predictions are written to {pred_dir}")
 
         else:
-            result, _ = careamist.predict(
+            results, sources = careamist.predict(
                 pred_data,
                 data_type=data_type,
                 tile_size=configuration.tile_size,
@@ -131,8 +131,10 @@ def _predict(
                 batch_size=configuration.pred_batch_size,
             )
 
-        if result is not None and len(result) > 0:
-            update_queue.put(PredictionUpdate(PredictionUpdateType.SAMPLE, result))
+        if results is not None and len(results) > 0:
+            update_queue.put(
+                PredictionUpdate(PredictionUpdateType.SAMPLE, (results, sources))
+            )
 
     except PredictionStoppedException:
         # handle user-requested stop
