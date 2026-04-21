@@ -8,18 +8,18 @@ from threading import Thread
 import napari.utils.notifications as ntf
 import numpy as np
 from careamics.careamist_v2 import CAREamistV2
+from careamics.lightning import StopPredictionCallback
 from numpy.typing import NDArray
-
-# from careamics.lightning import StopPredictionCallback
 from superqt.utils import thread_worker
 
 from careamics_napari.careamics_utils import (
     BaseConfig,
     DiskWriterCallback,
-    StopPredictionCallback,
+    # StopPredictionCallback,
     UpdaterCallBack,
 )
 from careamics_napari.signals import (
+    PredictionState,
     PredictionStatus,
     TrainingState,
     TrainUpdate,
@@ -191,7 +191,11 @@ def _train(
                 DiskWriterCallback(training_queue, predict_queue),
             ]
             if pred_status is not None:
-                callbacks.append(StopPredictionCallback(pred_status))
+                callbacks.append(
+                    StopPredictionCallback(
+                        lambda: pred_status.state == PredictionState.STOPPED
+                    )
+                )
 
             careamist = CAREamistV2(
                 configuration, callbacks=callbacks, work_dir=configuration.work_dir

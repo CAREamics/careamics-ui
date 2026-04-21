@@ -6,12 +6,12 @@ from pathlib import Path
 from queue import Queue
 from threading import Thread
 
-# from careamics.lightning import PredictionStoppedException
 from careamics.careamist_v2 import CAREamistV2
+from careamics.lightning import PredictionStoppedException
 from numpy.typing import NDArray
 from superqt.utils import thread_worker
 
-from careamics_napari.careamics_utils import BaseConfig, PredictionStoppedException
+from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.signals import (
     PredictionState,
     PredictionUpdate,
