@@ -7,8 +7,6 @@ __all__ = [
     "DiskWriterCallback",
     "N2NAdvancedConfig",
     "N2VAdvancedConfig",
-    # "PredictionStoppedException",
-    # "StopPredictionCallback",
     "UpdaterCallBack",
     "get_algorithm",
     "get_available_algorithms",
@@ -21,8 +19,6 @@ __all__ = [
 from .algorithms import get_algorithm, get_available_algorithms
 from .callbacks import (
     DiskWriterCallback,
-    # PredictionStoppedException,
-    # StopPredictionCallback,
     UpdaterCallBack,
 )
 from .care_configs import CAREAdvancedConfig, get_default_care_config

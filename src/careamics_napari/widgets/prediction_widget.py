@@ -6,8 +6,7 @@ from queue import Queue
 
 import numpy as np
 from careamics.careamist_v2 import CAREamistV2
-
-# from careamics.lightning import StopPredictionCallback
+from careamics.lightning import StopPredictionCallback
 from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -23,7 +22,6 @@ from qtpy.QtWidgets import (
 
 from careamics_napari.careamics_utils import (
     BaseConfig,
-    StopPredictionCallback,
     UpdaterCallBack,
 )
 from careamics_napari.signals import (
@@ -322,7 +320,9 @@ class PredictionWidget(QGroupBox):
                 work_dir=self.configuration.work_dir,
                 callbacks=[
                     UpdaterCallBack(training_queue, self.prediction_queue),
-                    StopPredictionCallback(self.pred_status),
+                    StopPredictionCallback(
+                        lambda: pred_status.state == PredictionState.STOPPED
+                    ),
                 ],
             )
 

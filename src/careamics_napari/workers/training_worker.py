@@ -15,7 +15,6 @@ from superqt.utils import thread_worker
 from careamics_napari.careamics_utils import (
     BaseConfig,
     DiskWriterCallback,
-    # StopPredictionCallback,
     UpdaterCallBack,
 )
 from careamics_napari.signals import (
