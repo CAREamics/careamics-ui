@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 from typing import TYPE_CHECKING
 
-from careamics.careamist_v2 import CAREamistV2
+from careamics import CAREamist
 from psygnal import evented
 
 if TYPE_CHECKING:
@@ -96,7 +96,7 @@ class TrainUpdate:
     """Type of the update."""
 
     # TODO should we split into subclasses to make the value type more specific?
-    value: int | float | str | TrainingState | CAREamistV2 | Exception | None = None
+    value: int | float | str | TrainingState | CAREamist | Exception | None = None
     """Content of the update."""
 
 

@@ -6,7 +6,7 @@ from pathlib import Path
 from queue import Queue
 from threading import Thread
 
-from careamics.careamist_v2 import CAREamistV2
+from careamics import CAREamist
 from careamics.lightning import PredictionStoppedException
 from numpy.typing import NDArray
 from superqt.utils import thread_worker
@@ -21,7 +21,7 @@ from careamics_napari.signals import (
 
 @thread_worker
 def predict_worker(
-    careamist: CAREamistV2,
+    careamist: CAREamist,
     pred_data: NDArray | str,
     configuration: BaseConfig,
     update_queue: Queue,
@@ -70,7 +70,7 @@ def predict_worker(
 
 
 def _predict(
-    careamist: CAREamistV2,
+    careamist: CAREamist,
     pred_data: NDArray | str,
     configuration: BaseConfig,
     update_queue: Queue,

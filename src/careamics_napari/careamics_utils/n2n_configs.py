@@ -1,4 +1,4 @@
-from careamics.config.ng_factories import create_advanced_n2n_config
+from careamics.config import create_advanced_n2n_config
 
 from careamics_napari.utils import get_num_workers
 

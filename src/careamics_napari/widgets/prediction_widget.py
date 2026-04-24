@@ -5,7 +5,7 @@ from pathlib import Path
 from queue import Queue
 
 import numpy as np
-from careamics.careamist_v2 import CAREamistV2
+from careamics import CAREamist
 from careamics.lightning import StopPredictionCallback
 from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
@@ -62,7 +62,7 @@ class PredictionWidget(QGroupBox):
 
     # set a signal to send a careamist object
     # when it's loaded from disk.
-    careamist_loaded = Signal(CAREamistV2)
+    careamist_loaded = Signal(CAREamist)
     # signal for model selection changed
     model_from_disk = Signal(bool)
 
@@ -298,7 +298,7 @@ class PredictionWidget(QGroupBox):
     def _is_prediction_stopped(self):
         return self.pred_status == PredictionState.STOPPED
 
-    def _load_model(self, model_path: str) -> CAREamistV2 | None:
+    def _load_model(self, model_path: str) -> CAREamist | None:
         """Load a CAREamics model.
 
         Parameters
@@ -315,13 +315,13 @@ class PredictionWidget(QGroupBox):
             # make a training queue
             training_queue = Queue(10)
             # careamist: carefully load the model among the mist! :)
-            careamist = CAREamistV2(
+            careamist = CAREamist(
                 checkpoint_path=Path(model_path),
                 work_dir=self.configuration.work_dir,
                 callbacks=[
                     UpdaterCallBack(training_queue, self.prediction_queue),
                     StopPredictionCallback(
-                        lambda: pred_status.state == PredictionState.STOPPED
+                        lambda: self.pred_status.state == PredictionState.STOPPED
                     ),
                 ],
             )

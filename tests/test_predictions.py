@@ -6,11 +6,11 @@ from itertools import combinations
 
 import numpy as np
 import utils
+from careamics import CAREamist
 
 # disable logging
 from careamics.careamist import logger
-from careamics.careamist_v2 import CAREamistV2
-from careamics.config.ng_factories import create_advanced_n2v_config
+from careamics.config import create_advanced_n2v_config
 
 # from careamics_napari.utils.axes_utils import reshape_prediction
 
@@ -91,7 +91,7 @@ def test_predict():
             )
 
             # instantiate a careamist
-            careamist = CAREamistV2(config)
+            careamist = CAREamist(config)
             careamist.config.data_config.normalization.set_input_stats(
                 [127.0] * n_channels, [75.0] * n_channels
             )

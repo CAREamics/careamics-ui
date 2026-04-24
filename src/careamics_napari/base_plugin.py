@@ -4,8 +4,8 @@ from pathlib import Path
 from queue import Queue
 
 import numpy as np
-from careamics.careamist_v2 import CAREamistV2
-from careamics.model_io.bioimage.cover_factory import create_cover
+from careamics import CAREamist
+from careamics.compat.model_io.bioimage.cover_factory import create_cover
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QVBoxLayout, QWidget
 
@@ -67,8 +67,8 @@ class BasePlugin(QWidget):
         """
         super().__init__()
         self.viewer = napari_viewer
-        self.careamist: CAREamistV2 | None = None  # to hold trained careamist
-        self.loaded_careamist: CAREamistV2 | None = None  # to hold loaded careamist
+        self.careamist: CAREamist | None = None  # to hold trained careamist
+        self.loaded_careamist: CAREamist | None = None  # to hold loaded careamist
 
         # create statuses, used to keep track of the threads statuses
         self.train_status = TrainingStatus()  # type: ignore
@@ -299,7 +299,7 @@ class BasePlugin(QWidget):
                 PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, -1)
             )
 
-    def _on_careamist_loaded(self, careamist: CAREamistV2) -> None:
+    def _on_careamist_loaded(self, careamist: CAREamist) -> None:
         """Event handler called when a CAREamics instance has been loaded."""
         self.loaded_careamist = careamist
         print(
@@ -318,7 +318,7 @@ class BasePlugin(QWidget):
             self.prediction_widget.predict_button.setEnabled(True)
             self.prediction_widget.stop_button.setEnabled(False)
 
-    def _which_careamist(self) -> CAREamistV2 | None:
+    def _which_careamist(self) -> CAREamist | None:
         """Which careamist to use? Trained one or the loaded one."""
         # if load from disk option is selected
         if self.prediction_widget.load_from_disk:
@@ -343,7 +343,7 @@ class BasePlugin(QWidget):
             Update.
         """
         if update.type == TrainUpdateType.CAREAMIST:
-            if isinstance(update.value, CAREamistV2):
+            if isinstance(update.value, CAREamist):
                 self.careamist = update.value
         elif update.type == TrainUpdateType.DEBUG:
             print(update.value)

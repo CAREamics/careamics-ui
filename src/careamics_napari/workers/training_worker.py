@@ -7,7 +7,7 @@ from threading import Thread
 
 import napari.utils.notifications as ntf
 import numpy as np
-from careamics.careamist_v2 import CAREamistV2
+from careamics import CAREamist
 from careamics.lightning import StopPredictionCallback
 from numpy.typing import NDArray
 from superqt.utils import thread_worker
@@ -62,7 +62,7 @@ def train_worker(
     data_sources: dict[str, list],
     training_queue: Queue,
     predict_queue: Queue,
-    careamist: CAREamistV2 | None = None,
+    careamist: CAREamist | None = None,
     pred_status: PredictionStatus | None = None,
 ) -> Generator[TrainUpdate, None, None]:
     """Model training worker.
@@ -134,7 +134,7 @@ def _train(
     data_sources: dict[str, list],
     training_queue: Queue,
     predict_queue: Queue,
-    careamist: CAREamistV2 | None = None,
+    careamist: CAREamist | None = None,
     pred_status: PredictionStatus | None = None,
 ) -> None:
     """Run the training.
@@ -196,7 +196,7 @@ def _train(
                     )
                 )
 
-            careamist = CAREamistV2(
+            careamist = CAREamist(
                 configuration, callbacks=callbacks, work_dir=configuration.work_dir
             )
         else:
