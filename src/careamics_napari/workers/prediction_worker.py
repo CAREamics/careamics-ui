@@ -2,14 +2,16 @@
 
 import traceback
 from collections.abc import Generator
+from pathlib import Path
 from queue import Queue
 from threading import Thread
 
 from careamics import CAREamist
+from careamics.lightning import PredictionStoppedException
 from numpy.typing import NDArray
 from superqt.utils import thread_worker
 
-from careamics_napari.careamics_utils import BaseConfig, PredictionStoppedException
+from careamics_napari.careamics_utils import BaseConfig
 from careamics_napari.signals import (
     PredictionState,
     PredictionUpdate,
@@ -86,25 +88,56 @@ def _predict(
     update_queue : Queue
         Queue used to send updates to the UI.
     """
-    data_type = "tiff" if isinstance(pred_data, str) else "array"
+    data_type = "array"
+    write_type = "tiff"
+    in_memory = True
+    if isinstance(pred_data, str | Path):
+        if str(pred_data).endswith("zarr"):
+            data_type = "zarr"
+            write_type = "zarr"
+            in_memory = False
+        else:
+            data_type = "tiff"
+        # prediction dir if writing to disk is set
+        pred_dir = Path(pred_data).parent / "predictions"
+    else:
+        pred_dir = configuration.work_dir / "predictions"
+
     tile_overlap = [configuration.tile_overlap_xy, configuration.tile_overlap_xy]
     if configuration.is_3D:
         tile_overlap.insert(0, configuration.tile_overlap_z)
+
     # predict with careamist
     try:
-        result = careamist.predict(  # type: ignore
-            pred_data,  # type: ignore
-            data_type=data_type,  # type: ignore
-            tile_size=configuration.tile_size,
-            tile_overlap=tuple(tile_overlap),
-            batch_size=configuration.pred_batch_size,
-        )
+        if configuration.write_to_disk:
+            results = careamist.predict_to_disk(
+                pred_data,
+                prediction_dir=pred_dir,
+                data_type=data_type,
+                write_type=write_type,
+                tile_size=configuration.tile_size,
+                tile_overlap=tuple(tile_overlap),
+                batch_size=configuration.pred_batch_size,
+                in_memory=in_memory,
+            )
+            print(f"Predictions are written to {pred_dir}")
 
-        if result is not None and len(result) > 0:
-            update_queue.put(PredictionUpdate(PredictionUpdateType.SAMPLE, result))
+        else:
+            results, sources = careamist.predict(
+                pred_data,
+                data_type=data_type,
+                tile_size=configuration.tile_size,
+                tile_overlap=tuple(tile_overlap),
+                batch_size=configuration.pred_batch_size,
+            )
+
+        if results is not None and len(results) > 0:
+            update_queue.put(
+                PredictionUpdate(PredictionUpdateType.SAMPLE, (results, sources))
+            )
 
     except PredictionStoppedException:
-        # Handle user-requested stop
+        # handle user-requested stop
         update_queue.put(
             PredictionUpdate(PredictionUpdateType.STATE, PredictionState.STOPPED)
         )

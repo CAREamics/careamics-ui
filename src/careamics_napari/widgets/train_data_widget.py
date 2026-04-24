@@ -89,12 +89,18 @@ class TrainDataWidget(QTabWidget):
 
         else:
             # data is expected from disk
-            self.configuration.data_config.data_type = "tiff"
             train_data = [self.train_images_folder.get_folder()]
             val_data = [self.val_images_folder.get_folder()]
             if self.use_target:
                 train_data.append(self.train_target_folder.get_folder())
                 val_data.append(self.val_target_folder.get_folder())
+            # zarr or tiff
+            if train_data[0].endswith("zarr"):
+                self.configuration.data_config.data_type = "zarr"
+                self.configuration.data_config.in_memory = False
+            else:
+                self.configuration.data_config.data_type = "tiff"
+                self.configuration.data_config.in_memory = True
 
         return {"train": train_data, "val": val_data}
 

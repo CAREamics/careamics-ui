@@ -1,17 +1,21 @@
-# from src.careamics_napari.training_plugin import TrainingPlugin
+# to set PYTORCH_ENABLE_MPS_FALLBACK for macOS
 import contextlib
 import logging
 import sys
 from itertools import combinations
 
 import numpy as np
+import utils
 from careamics import CAREamist
 
 # disable logging
 from careamics.careamist import logger
-from careamics.config import create_n2v_configuration
+from careamics.config import create_advanced_n2v_config
 
-from careamics_napari.utils.axes_utils import reshape_prediction
+# from careamics_napari.utils.axes_utils import reshape_prediction
+
+# to avoid "imported but unused" error for utils and removed by ruff precommit
+utils.dummy()
 
 logger.setLevel("ERROR")
 logging.getLogger("pytorch_lightning.utilities.rank_zero").setLevel(logging.FATAL)
@@ -55,48 +59,53 @@ def generate_combinations_and_rotations(s):
     return sorted(all_results)
 
 
-augmentation = generate_combinations_and_rotations("TZC")
-for ax in augmentation:
-    test_axes = ax + "YX"
-    n_channels = 1
-    shape = []
-    for ax in test_axes:
-        if ax == "S":
-            shape.append(2)
-        elif ax == "T":
-            shape.append(4)
-        elif ax == "C":
-            shape.append(3)
-            n_channels = 3
-        else:
-            shape.append(16)
+def test_predict():
+    augmentation = generate_combinations_and_rotations("TZC")
+    for ax in augmentation:
+        test_axes = ax + "YX"
+        n_channels = 1
+        shape = []
+        for ax in test_axes:
+            if ax == "S":
+                shape.append(2)
+            elif ax == "T":
+                shape.append(4)
+            elif ax == "C":
+                shape.append(3)
+                n_channels = 3
+            else:
+                shape.append(16)
 
-    pred_data = np.random.randint(0, 255, shape).astype(np.float32)
-    with nostdout():
-        # create a configuration
-        config = create_n2v_configuration(
-            experiment_name=f"N2V_{test_axes}",
-            data_type="array",
-            axes=test_axes,
-            n_channels=n_channels,
-            patch_size=[8, 8, 8] if "Z" in test_axes else [8, 8],
-            batch_size=1,
-            num_epochs=1,
-            masked_pixel_percentage=2,
+        pred_data = np.random.randint(0, 255, shape).astype(np.float32)
+        with nostdout():
+            # create a configuration
+            config = create_advanced_n2v_config(
+                experiment_name=f"N2V_{test_axes}",
+                data_type="array",
+                axes=test_axes,
+                n_channels=n_channels,
+                patch_size=[8, 8, 8] if "Z" in test_axes else [8, 8],
+                batch_size=1,
+                num_epochs=1,
+                masked_pixel_percentage=2,
+            )
+
+            # instantiate a careamist
+            careamist = CAREamist(config)
+            careamist.config.data_config.normalization.set_input_stats(
+                [127.0] * n_channels, [75.0] * n_channels
+            )
+            # careamist.config.data_config.set_means_and_stds(
+            #     [127.0] * n_channels, [75.0] * n_channels
+            # )
+
+            predction, _ = careamist.predict(pred_data)
+        if isinstance(predction, list):
+            predction = np.concatenate(predction, axis=0)
+
+        # pred = reshape_prediction(predction, test_axes, "Z" in test_axes)
+
+        assert pred_data.shape == predction.shape, (
+            f"Prediction shape {pred_data.shape} != "
+            f"{predction.shape} for axes {test_axes}"
         )
-
-        # instantiate a careamist
-        careamist = CAREamist(config)
-        careamist.cfg.data_config.set_means_and_stds(
-            [127.0] * n_channels, [75.0] * n_channels
-        )
-
-        predction = careamist.predict(source=pred_data)
-    if isinstance(predction, list):
-        predction = np.concatenate(predction, axis=0)
-
-    pred = reshape_prediction(predction, test_axes, "Z" in test_axes)
-
-    assert pred_data.shape == pred.shape, (
-        f"Prediction shape {pred_data.shape} != {predction.shape} for axes {test_axes}"
-    )

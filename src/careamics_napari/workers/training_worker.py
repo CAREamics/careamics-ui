@@ -8,19 +8,52 @@ from threading import Thread
 import napari.utils.notifications as ntf
 import numpy as np
 from careamics import CAREamist
+from careamics.lightning import StopPredictionCallback
+from numpy.typing import NDArray
 from superqt.utils import thread_worker
 
 from careamics_napari.careamics_utils import (
     BaseConfig,
-    StopPredictionCallback,
+    DiskWriterCallback,
     UpdaterCallBack,
 )
 from careamics_napari.signals import (
+    PredictionState,
     PredictionStatus,
     TrainingState,
     TrainUpdate,
     TrainUpdateType,
 )
+
+
+def is_val_the_same_as_train(
+    train_data: NDArray | str,
+    val_data: NDArray | str | None,
+) -> bool:
+    """Check if validation data is the same as training data.
+
+    Parameters
+    ----------
+    train_data : NDArray | str
+        Training data.
+    val_data : NDArray | str | None
+        Validation data.
+
+    Returns
+    -------
+    bool
+        True if validation data is the same as training data, False otherwise.
+    """
+    if val_data is None:
+        return False
+
+    if isinstance(train_data, str):
+        return train_data == val_data
+
+    if isinstance(val_data, np.ndarray):
+        return np.array_equal(train_data, val_data)
+
+    return False
 
 
 @thread_worker
@@ -121,18 +154,24 @@ def _train(
     pred_status : PredictionStatus or None, default=None
         Prediction status for stop callback.
     """
-    train_data = data_sources["train"][0]
-    val_data = data_sources["val"][0]
+    train_data: NDArray | str = data_sources["train"][0]
+    val_data: NDArray | str | None = data_sources["val"][0]
+
+    # check if val data is set
+    # in case data is coming from files from disk
+    if isinstance(val_data, str) and len(val_data) == 0:
+        val_data = None
+
+    # check if target data is available
     train_target = None
     val_target = None
-    # check if target data is available
     if len(data_sources["train"]) > 1:
         train_target = data_sources["train"][1]
     if len(data_sources["val"]) > 1:
         val_target = data_sources["val"][1]
 
     # if the train and validation data are the same
-    if np.array_equal(train_data, val_data):
+    if is_val_the_same_as_train(train_data, val_data):
         val_data = None
         val_target = None
 
@@ -146,25 +185,35 @@ def _train(
     try:
         # create / update CAREamist
         if careamist is None:
-            callbacks: list = [UpdaterCallBack(training_queue, predict_queue)]
+            callbacks: list = [
+                UpdaterCallBack(training_queue, predict_queue),
+                DiskWriterCallback(training_queue, predict_queue),
+            ]
             if pred_status is not None:
-                callbacks.append(StopPredictionCallback(pred_status))
+                callbacks.append(
+                    StopPredictionCallback(
+                        lambda: pred_status.state == PredictionState.STOPPED
+                    )
+                )
 
             careamist = CAREamist(
                 configuration, callbacks=callbacks, work_dir=configuration.work_dir
             )
         else:
-            # only update the number of epochs
-            if configuration.training_config.lightning_trainer_config:
-                configuration.training_config.lightning_trainer_config["max_epochs"] = (
-                    configuration.training_config.lightning_trainer_config["max_epochs"]
-                )
             if val_data is None:
                 ntf.show_error(
                     "Continuing training is currently not supported without explicitely "
                     "passing validation. The reason is that otherwise, the data used for "
                     "validation will be different and there will be data leakage in the "
                     "training set."
+                )
+            # update the number of epochs and number of steps
+            if configuration.training_config.trainer_params:
+                careamist.config.training_config.trainer_params["max_epochs"] = (
+                    configuration.training_config.trainer_params["max_epochs"]
+                )
+                careamist.config.training_config.trainer_params["limit_train_batches"] = (
+                    configuration.training_config.trainer_params["limit_train_batches"]
                 )
     except Exception as e:
         traceback.print_exc()
@@ -177,12 +226,10 @@ def _train(
     if careamist is not None:
         try:
             careamist.train(
-                train_source=train_data,
-                val_source=val_data,
-                train_target=train_target,
-                val_target=val_target,
-                val_minimum_split=configuration.val_minimum_split,
-                val_percentage=configuration.val_percentage,
+                train_data=train_data,
+                train_data_target=train_target,
+                val_data=val_data,
+                val_data_target=val_target,
             )
         except Exception as e:
             traceback.print_exc()
