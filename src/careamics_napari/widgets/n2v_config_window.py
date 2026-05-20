@@ -1,3 +1,4 @@
+# type: ignore[attr-defined]
 from careamics.config.algorithms import N2VAlgorithm
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (

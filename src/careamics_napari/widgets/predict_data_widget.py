@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
     QFormLayout,
     QTabWidget,
@@ -28,6 +28,8 @@ else:
 class PredictDataWidget(QTabWidget):
     """A widget offering to select a layer from napari or a path from disk."""
 
+    data_source_changed = Signal()
+
     def __init__(self) -> None:
         """Initialize the widget."""
         super().__init__()
@@ -45,13 +47,14 @@ class PredictDataWidget(QTabWidget):
             # add tab contents
             self._set_layer_tab(layer_tab)
             _tab_idx += 1
+
         # tab for selecting data from disk
         self.addTab(disk_tab, "From disk")
         self.setTabToolTip(_tab_idx, "Use patches saved on the disk")
         self._set_disk_tab(disk_tab)
 
-    def get_data_sources(self) -> str | np.ndarray | None:
-        """Get the selected data sources."""
+    def get_data_source(self) -> str | np.ndarray | None:
+        """Get the selected data source."""
         if (
             self.img_pred.value is None  # type: ignore
             and len(self.pred_images_folder.get_folder()) == 0
@@ -108,6 +111,8 @@ class PredictDataWidget(QTabWidget):
         self.pred_images_folder = FolderWidget("Choose")
         self.pred_images_folder.setToolTip("Select a folder containing images.")
         form.addRow("Predict", self.pred_images_folder)
+        # fire an event on data source change to update the config in the parent widget
+        self.pred_images_folder.folder_changed.connect(self.data_source_changed.emit)
 
         vbox = QVBoxLayout()
         vbox.addLayout(form)

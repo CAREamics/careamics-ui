@@ -1,3 +1,4 @@
+# type: ignore[attr-defined]
 from pathlib import Path
 
 from bioimageio.spec.model.v0_5 import Author as AuthorModel

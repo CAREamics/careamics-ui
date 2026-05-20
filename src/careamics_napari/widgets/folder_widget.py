@@ -2,6 +2,7 @@
 
 from typing import Self
 
+from qtpy.QtCore import Signal  # type: ignore
 from qtpy.QtWidgets import QFileDialog, QHBoxLayout, QLineEdit, QPushButton, QWidget
 
 
@@ -13,6 +14,8 @@ class FolderWidget(QWidget):
     text : str
         Text displayed on the button.
     """
+
+    folder_changed = Signal(str)
 
     def __init__(self: Self, text: str) -> None:
         """Initialize the widget.
@@ -43,9 +46,10 @@ class FolderWidget(QWidget):
     def _open_dialog(self: Self) -> None:
         """Open a dialog to select a folder."""
         path = QFileDialog.getExistingDirectory(self, "Select Folder")
-
         # set text in the text field
         self.text_field.setText(path)
+        # emit signal
+        self.folder_changed.emit(path)
 
     def get_folder(self: Self) -> str:
         """Get the selected folder.

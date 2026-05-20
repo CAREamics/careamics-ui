@@ -1,9 +1,12 @@
+# type: ignore[attr-defined]
 """Widget used to run prediction from the Training plugin."""
 
+from pathlib import Path
 from queue import Queue
 
 import numpy as np
 from careamics import CAREamist
+from careamics.lightning import StopPredictionCallback
 from qtpy.QtCore import Qt, Signal  # type: ignore
 from qtpy.QtWidgets import (
     QCheckBox,
@@ -19,7 +22,6 @@ from qtpy.QtWidgets import (
 
 from careamics_napari.careamics_utils import (
     BaseConfig,
-    StopPredictionCallback,
     UpdaterCallBack,
 )
 from careamics_napari.signals import (
@@ -120,7 +122,7 @@ class PredictionWidget(QGroupBox):
         )
 
         # tiling spinboxes
-        self.tile_size_xy_spin = PowerOfTwoSpinBox(64, 1024, 64)
+        self.tile_size_xy_spin = PowerOfTwoSpinBox(64, 1024, 128)
         self.tile_size_xy_spin.setToolTip("Tile size in the xy dimension.")
         # self.tile_size_xy.setEnabled(False)
 
@@ -134,6 +136,11 @@ class PredictionWidget(QGroupBox):
             "Number of patches per batch (decrease if GPU memory is insufficient)"
         )
         # self.batch_size_spin.setEnabled(False)
+
+        # write to disk checkbox
+        self.to_disk_cbox = QCheckBox("Write predictions to disk")
+        self.to_disk_cbox.setChecked(False)
+        self.to_disk_cbox.setToolTip("Select to write the predictions to disk directly.")
 
         # prediction progress bar
         self.pb_prediction = create_progressbar(
@@ -173,6 +180,7 @@ class PredictionWidget(QGroupBox):
         tiling_form.addRow("Z tile size", self.tile_size_z_spin)
         tiling_form.addRow("Batch size", self.batch_size_spin)
         vbox.addLayout(tiling_form)
+        vbox.addWidget(self.to_disk_cbox)
         vbox.addWidget(self.pb_prediction)
         hbox = QHBoxLayout()
         hbox.addWidget(self.predict_button, alignment=Qt.AlignLeft)  # type: ignore
@@ -181,6 +189,7 @@ class PredictionWidget(QGroupBox):
         self.setLayout(vbox)
 
         # actions
+        self.predict_data_widget.data_source_changed.connect(self._update_write_to_disk)
         self.from_train_radiobutton.clicked.connect(self._model_selection_changed)
         self.from_disk_radiobutton.clicked.connect(self._model_selection_changed)
         self.load_button.clicked.connect(self._select_model_checkpoint)
@@ -224,7 +233,7 @@ class PredictionWidget(QGroupBox):
 
     def get_data_source(self) -> str | np.ndarray | None:
         """Get the selected data sources from the predict data widget."""
-        return self.predict_data_widget.get_data_sources()
+        return self.predict_data_widget.get_data_source()
 
     def update_config(self) -> None:
         """Update the prediction configuration from the UI element."""
@@ -239,26 +248,31 @@ class PredictionWidget(QGroupBox):
         # batch size
         self.configuration.pred_batch_size = self.batch_size
 
+        # write to disk
+        self.configuration.write_to_disk = self.to_disk
+
     def _bind_properties(self) -> None:
         """Create and bind the properties to the UI elements."""
         # type(self) returns the class of the instance, so we are adding
         # properties to the class itself, not the instance.
+
         # to check if should use a loaded model
         type(self).load_from_disk = bind(self.from_disk_radiobutton, "checked", False)
         # tiling
         type(self).do_tiling = bind(self.tiling_cbox, "checked", True)
         # tile size in xy
-        type(self).tile_size_xy = bind(self.tile_size_xy_spin, "value", 64)
+        type(self).tile_size_xy = bind(self.tile_size_xy_spin, "value", 128)
         # tile size in z
         type(self).tile_size_z = bind(self.tile_size_z_spin, "value", 8)
         # batch size
-        type(self).batch_size = bind(self.batch_size_spin, "value", 1)
         # for example when self.batch_size_spin value is changed,
         # self.batch_size will be updated automatically.
+        type(self).batch_size = bind(self.batch_size_spin, "value", 1)
+        # write to disk
+        type(self).to_disk = bind(self.to_disk_cbox, "checked", False)
 
     def _model_selection_changed(self) -> None:
         """Update model selection ui."""
-        # load_from_disk = self.from_disk_radiobutton.isChecked()
         self.model_textbox.setEnabled(self.load_from_disk)
         self.load_button.setEnabled(self.load_from_disk)
         self.model_from_disk.emit(self.load_from_disk)
@@ -272,14 +286,17 @@ class PredictionWidget(QGroupBox):
             careamist = self._load_model(selected_file)
             if careamist is None:
                 print(f"Error loading the model: {selected_file}")
-                # if _has_napari:
-                #     ntf.show_error(f"Error loading the model: {selected_file}")
+                if _has_napari:
+                    ntf.show_error(f"Error loading the model: {selected_file}")
                 return
             # sent the careamist to the parent window / plugin
             self.careamist_loaded.emit(careamist)
             self.model_textbox.setText(selected_file)
             self.predict_button.setEnabled(True)
             self.stop_button.setEnabled(False)
+
+    def _is_prediction_stopped(self):
+        return self.pred_status == PredictionState.STOPPED
 
     def _load_model(self, model_path: str) -> CAREamist | None:
         """Load a CAREamics model.
@@ -299,17 +316,19 @@ class PredictionWidget(QGroupBox):
             training_queue = Queue(10)
             # careamist: carefully load the model among the mist! :)
             careamist = CAREamist(
-                model_path,
+                checkpoint_path=Path(model_path),
                 work_dir=self.configuration.work_dir,
                 callbacks=[
                     UpdaterCallBack(training_queue, self.prediction_queue),
-                    StopPredictionCallback(self.pred_status),
+                    StopPredictionCallback(
+                        lambda: self.pred_status.state == PredictionState.STOPPED
+                    ),
                 ],
             )
 
             # check the loaded model algorithm
             # to be compatible with the current configuration
-            model_algo = careamist.cfg.get_algorithm_friendly_name()
+            model_algo = careamist.config.get_algorithm_friendly_name()
             config_algo = self.configuration.get_algorithm_friendly_name()
             if model_algo != config_algo:
                 err_msg = (
@@ -325,6 +344,16 @@ class PredictionWidget(QGroupBox):
         except Exception as e:
             print(f"Error loading the model:\n{e}")
             return None
+
+    def _update_write_to_disk(self) -> None:
+        """Update the write to disk checkbox."""
+        data_source = self.get_data_source()
+        if isinstance(data_source, str) and data_source.endswith("zarr"):
+            self.to_disk_cbox.setEnabled(True)
+            self.to_disk_cbox.setEnabled(False)
+        else:
+            self.to_disk_cbox.setChecked(False)
+            self.to_disk_cbox.setEnabled(True)
 
     def _update_tilings(self, state: bool) -> None:
         """Update the widgets and the signal tiling parameter.

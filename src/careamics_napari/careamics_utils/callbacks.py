@@ -5,11 +5,9 @@ from typing import Any
 
 import numpy as np
 from pytorch_lightning import LightningModule, Trainer
-from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.callbacks import BasePredictionWriter, Callback
 
 from careamics_napari.signals import (
-    PredictionState,
-    PredictionStatus,
     PredictionUpdate,
     PredictionUpdateType,
     TrainUpdate,
@@ -198,62 +196,81 @@ class UpdaterCallBack(Callback):
         )
 
 
-class PredictionStoppedException(Exception):
-    """Exception raised when prediction is stopped by user."""
-
-    pass
-
-
-class StopPredictionCallback(Callback):
-    """PyTorch Lightning callback to stop prediction when signaled.
-
-    This callback monitors a PredictionStatus object and stops the trainer
-    when the state is set to STOPPED, allowing for graceful interruption of
-    prediction processes.
+class DiskWriterCallback(BasePredictionWriter):
+    """PyTorch Lightning callback for updating training and prediction UI states.
 
     Parameters
     ----------
-    pred_status : PredictionStatus
-        Prediction status object that when set to STOPPED, signals the prediction to stop.
+    training_queue : Queue
+        Training queue used to pass updates between threads.
+    prediction_queue : Queue
+        Prediction queue used to pass updates between threads.
     """
 
-    def __init__(self, pred_status: PredictionStatus) -> None:
+    def __init__(self, training_queue: Queue, prediction_queue: Queue) -> None:
         """Initialize the callback.
 
         Parameters
         ----------
-        pred_status : PredictionStatus
-            Prediction status object that when set to STOPPED,
-            signals the prediction to stop.
+        training_queue : Queue
+            Training queue used to pass updates between threads.
+        prediction_queue : Queue
+            Prediction queue used to pass updates between threads.
         """
-        super().__init__()
-        self.pred_status = pred_status
+        super().__init__(write_interval="batch")
 
-    def on_predict_batch_start(
+        self.training_queue = training_queue
+        self.prediction_queue = prediction_queue
+
+    def get_train_queue(self) -> Queue:
+        """Return the training queue.
+
+        Returns
+        -------
+        Queue
+            Training queue.
+        """
+        return self.training_queue
+
+    def get_predict_queue(self) -> Queue:
+        """Return the prediction queue.
+
+        Returns
+        -------
+        Queue
+            Prediction queue.
+        """
+        return self.prediction_queue
+
+    def write_on_batch_end(
         self,
         trainer: Trainer,
         pl_module: LightningModule,
+        prediction: Any,
+        batch_indices: Any,
         batch: Any,
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        """Check for stop signal at the start of each prediction batch.
+        """Write predictions at the end of a batch.
 
         Parameters
         ----------
-        trainer : pl.Trainer
-            The PyTorch Lightning trainer.
-        pl_module : pl.LightningModule
-            The Lightning module being used.
+        trainer : Trainer
+            PyTorch Lightning trainer.
+        pl_module : LightningModule
+            PyTorch Lightning module.
+        prediction : Any
+            Prediction outputs of `batch`.
+        batch_indices : Any
+            Batch indices.
         batch : Any
-            The current batch of data.
+            Input batch.
         batch_idx : int
-            Index of the current batch.
-        dataloader_idx : int, optional
-            Index of the current dataloader, by default 0.
+            Batch index.
+        dataloader_idx : int, default=0
+            Dataloader index.
         """
-        if self.pred_status.state == PredictionState.STOPPED:
-            print("Stop signal received, stopping prediction...")
-            trainer.should_stop = True
-            # For prediction, we need to raise an exception to actually stop
-            raise PredictionStoppedException("Prediction stopped by user")
+        self.prediction_queue.put(
+            PredictionUpdate(PredictionUpdateType.SAMPLE_IDX, batch_idx)
+        )
