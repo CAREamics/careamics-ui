@@ -24,7 +24,7 @@ dependencies = [
     "psygnal",
     "pyqtgraph",
     "napari[all]",
-    "careamics[tensorboard]>=0.1",
+    "careamics[tensorboard]>=0.2.0",
     "careamics-portfolio",
     "numcodecs<0.16",
 ]
