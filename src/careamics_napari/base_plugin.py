@@ -5,7 +5,7 @@ from queue import Queue
 
 import numpy as np
 from careamics import CAREamist
-from careamics.compat.model_io.bioimage.cover_factory import create_cover
+from careamics.model_io.bioimage.cover_factory import create_cover
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QVBoxLayout, QWidget
 
@@ -427,14 +427,14 @@ class BasePlugin(QWidget):
             sample_input = train_data[0, :256, :256]
 
         # make a default cover image
-        output_patches = self.careamist.predict(
+        output_patches, _ = self.careamist.predict(
             pred_data=sample_input,
         )
         sample_output = np.concatenate(output_patches, axis=0)
         cover_path = create_cover(
             directory=self.careamics_config.work_dir,
             array_in=sample_input[np.newaxis, np.newaxis, ...],
-            array_out=sample_output,
+            array_out=sample_output[np.newaxis, np.newaxis, ...],
         )
 
         # show the bmz export dialog
@@ -443,22 +443,25 @@ class BasePlugin(QWidget):
     def _export_to_bmz(
         self, bmz_window: BMZExportWidget, bmz_path: Path, sample_input: np.ndarray
     ) -> None:
+        # careamist.export_to_bmz expects authors as list of dicts
+        authors: list[dict] = [author.model_dump() for author in bmz_window.authors]
+
         bmz_data = {
             "model_name": bmz_window.model_name,  # type: ignore[attr-defined]
             "description": bmz_window.general_description,  # type: ignore[attr-defined]
             "data_description": bmz_window.data_description,  # type: ignore[attr-defined]
-            "authors": bmz_window.authors,
+            "authors": authors,
             "cover": bmz_window.cover_image,  # type: ignore[attr-defined]
         }
 
         try:
             self.careamist.export_to_bmz(  # type: ignore
                 path_to_archive=bmz_path,
-                input_array=sample_input,
                 friendly_model_name=bmz_data["model_name"],
+                input_array=sample_input,
+                authors=bmz_data["authors"],
                 general_description=bmz_data["description"],
                 data_description=bmz_data["data_description"],
-                authors=bmz_data["authors"],
                 covers=[bmz_data["cover"]],
             )
             print(f"Model exported at {bmz_path}")
