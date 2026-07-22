@@ -116,9 +116,11 @@ class N2VConfigurationWindow(AdvancedConfigurationWindow):
         self.struct_axes_combo.setToolTip("Set the structured noise pattern.")
 
         self.struct_span_spin = create_int_spinbox(
-            1, 101, value=self.advanced_configuration.struct_span, step=1
+            1, 101, value=self.advanced_configuration.struct_span, step=2
         )
-        self.struct_span_spin.setToolTip("Set the span of the structured noise pattern.")
+        self.struct_span_spin.setToolTip(
+            "Set the span of the structured noise pattern (must be an odd number)."
+        )
 
         # layout
         layout = QVBoxLayout()
