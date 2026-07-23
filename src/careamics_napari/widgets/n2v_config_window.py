@@ -111,7 +111,7 @@ class N2VConfigurationWindow(AdvancedConfigurationWindow):
         tab_widget = QWidget()
 
         self.struct_axes_combo = QComboBox()
-        self.struct_axes_combo.addItems(["none", "horizontal", "vertical", "cross"])
+        self.struct_axes_combo.addItems(["none", "horizontal", "vertical", "cross", "square"])
         self.struct_axes_combo.setCurrentText(self.advanced_configuration.struct_axes)
         self.struct_axes_combo.setToolTip("Set the structured noise pattern.")
 
