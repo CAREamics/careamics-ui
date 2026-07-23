@@ -11,6 +11,9 @@ contributions:
     - id: careamics-napari.create_care
       python_name: careamics_napari.care_plugin:CAREPlugin
       title: CARE
+    - id: careamics-napari.autocorrelation
+      python_name: careamics_napari.autocorrelation:AutocorrelationWidget
+      title: Image Autocorrelation
     - id: careamics-napari.data_SEM_N2V
       python_name: careamics_napari.sample_data:n2v_sem_data
       title: Noise2Void SEM
@@ -27,6 +30,8 @@ contributions:
       display_name: Noise2Noise (N2N)
     - command: careamics-napari.create_care
       display_name: CARE
+    - command: careamics-napari.autocorrelation
+      display_name: Image Autocorrelation
   sample_data:
     - command: careamics-napari.data_SEM_N2V
       display_name: Download data for N2V (SEM)

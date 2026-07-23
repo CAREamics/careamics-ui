@@ -3,6 +3,7 @@ from careamics.config.algorithms import N2VAlgorithm
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFormLayout,
     QVBoxLayout,
     QWidget,
@@ -41,12 +42,13 @@ class N2VConfigurationWindow(AdvancedConfigurationWindow):
 
         self.advanced_configuration = algorithm_config
 
-        self.add_algorithm_specific_tab()
+        self.add_n2v_specific_tab()
+        self.add_structn2v_specific_tab()
 
         self.bind_properties()
 
-    def add_algorithm_specific_tab(self) -> None:
-        """Add algorithm specific advanced settings tab."""
+    def add_n2v_specific_tab(self) -> None:
+        """Add N2V specific advanced settings tab."""
         # tab widget
         tab_widget = QWidget()
 
@@ -103,6 +105,37 @@ class N2VConfigurationWindow(AdvancedConfigurationWindow):
         tab_widget.setLayout(layout)
         self.tabs.addTab(tab_widget, "N2V")
 
+    def add_structn2v_specific_tab(self) -> None:
+        """Add StructN2V specific advanced settings tab."""
+        # tab widget
+        tab_widget = QWidget()
+
+        self.struct_axes_combo = QComboBox()
+        self.struct_axes_combo.addItems(["none", "horizontal", "vertical", "cross", "square"])
+        self.struct_axes_combo.setCurrentText(self.advanced_configuration.struct_axes)
+        self.struct_axes_combo.setToolTip("Set the structured noise pattern.")
+
+        self.struct_span_spin = create_int_spinbox(
+            1, 101, value=self.advanced_configuration.struct_span, step=2
+        )
+        self.struct_span_spin.setToolTip(
+            "Set the span of the structured noise pattern (must be an odd number)."
+        )
+
+        # layout
+        layout = QVBoxLayout()
+        form = QFormLayout()
+        form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)  # type: ignore
+        form.setFieldGrowthPolicy(
+            QFormLayout.AllNonFixedFieldsGrow  # type: ignore
+        )
+        form.addRow("Structured Noise Axes:", self.struct_axes_combo)
+        form.addRow("Structured Noise Span:", self.struct_span_spin)
+        layout.addLayout(form)
+
+        tab_widget.setLayout(layout)
+        self.tabs.addTab(tab_widget, "StructN2V")
+
     def save(self) -> None:
         """Save the current state of the UI into configurations."""
         super().update_config()
@@ -121,21 +154,33 @@ class N2VConfigurationWindow(AdvancedConfigurationWindow):
         type(self).roi_size = bind(self.roi_spin, "value")
         type(self).masked_pixel_percentage = bind(self.masked_percentage_spin, "value")
         type(self).n_channels = bind(self.num_channels_spin, "value")
+        type(self).struct_axes = bind(self.struct_axes_combo, "currentText")
+        type(self).struct_span = bind(self.struct_span_spin, "value")
 
     def update_config(self) -> None:
         """Update the configuration object from UI elements."""
         self.advanced_configuration.use_n2v2 = self.use_n2v2
-        self.configuration.algorithm_config.set_n2v2(self.use_n2v2)  # type: ignore
-
         self.advanced_configuration.roi_size = self.roi_size
         self.advanced_configuration.masked_pixel_percentage = self.masked_pixel_percentage
         self.advanced_configuration.n_channels = self.n_channels
+        self.advanced_configuration.struct_axes = self.struct_axes
+        self.advanced_configuration.struct_span = self.struct_span
 
         if isinstance(self.configuration.algorithm_config, N2VAlgorithm):
+            self.configuration.algorithm_config.set_n2v2(self.use_n2v2)
             self.configuration.algorithm_config.n2v_config.roi_size = self.roi_size
             self.configuration.algorithm_config.n2v_config.masked_pixel_percentage = (
                 self.masked_pixel_percentage
             )
+            # StructN2V
+            if self.struct_axes != "none":
+                self.configuration.algorithm_config.n2v_config.struct_mask = {
+                    "axes": self.struct_axes,
+                    "span": self.struct_span,
+                }
+            else:
+                self.configuration.algorithm_config.n2v_config.struct_mask = None
+            # update model config
             self.configuration.algorithm_config.model.in_channels = self.n_channels
             self.configuration.algorithm_config.model.num_classes = self.n_channels
 

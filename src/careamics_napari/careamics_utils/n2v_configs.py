@@ -20,8 +20,9 @@ class N2VAdvancedConfig(AdvancedConfig):
     n_channels: int | None = None
     """Number of channels in the input image (C must be in axes)."""
 
-    # struct_n2v_axis = None
-    # struct_n2v_span = 5
+    # StructN2V configs
+    struct_axes: str = "none"
+    struct_span: int = 5
 
 
 def get_default_n2v_config() -> BaseConfig:

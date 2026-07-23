@@ -189,7 +189,7 @@ class AdvancedConfigurationWindow(QDialog):
         tab_widget.setLayout(layout)
         self.tabs.addTab(tab_widget, "Common")
 
-    def add_algorithm_specific_tab(self) -> None:
+    def add_n2v_specific_tab(self) -> None:
         """Add algorithm specific advanced settings tab."""
         raise NotImplementedError("Should be implemented by subclasses.")
 
