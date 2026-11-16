@@ -28,7 +28,7 @@ jobs:
       - name: Update Ubuntu
         run: |
           sudo apt-get update
-          sudo apt-get install -y freeglut3-dev ffmpeg libsm6 libxext6
+          sudo apt-get install -y freeglut3-dev libegl1
         if: runner.os == 'Linux'
 
       - name: Set up Python ${{ matrix.python-version }}
