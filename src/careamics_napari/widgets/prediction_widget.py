@@ -349,7 +349,7 @@ class PredictionWidget(QGroupBox):
         """Update the write to disk checkbox."""
         data_source = self.get_data_source()
         if isinstance(data_source, str) and data_source.endswith("zarr"):
-            self.to_disk_cbox.setEnabled(True)
+            self.to_disk_cbox.setChecked(True)
             self.to_disk_cbox.setEnabled(False)
         else:
             self.to_disk_cbox.setChecked(False)
